@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warframe Interactive Checklist</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            padding: 16px;
+            color: #e2e8f0;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+            padding: 20px;
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 16px;
+        }
+        h1 { color: #22d3ee; font-size: 28px; margin-bottom: 8px; }
+        .subtitle { color: #94a3b8; font-size: 14px; }
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 16px;
+            background: #334155;
+            border: 2px solid #475569;
+            border-radius: 12px;
+            color: #e2e8f0;
+            font-size: 16px;
+        }
+        .search-box:focus { outline: none; border-color: #22d3ee; }
+        .btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn-secondary { background: linear-gradient(135deg, #64748b 0%, #475569 100%); }
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+        .tab {
+            padding: 12px 20px;
+            background: #334155;
+            border: none;
+            border-radius: 12px;
+            color: #94a3b8;
+            cursor: pointer;
+            white-space: nowrap;
+            font-weight: 600;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #22d3ee 0%, #06b6d4 100%);
+            color: #0f172a;
+        }
+        .progress-bar {
+            background: #334155;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .progress-fill-container {
+            background: #1e293b;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #22d3ee 0%, #06b6d4 100%);
+            transition: width 0.3s;
+        }
+        .item-list { display: flex; flex-direction: column; gap: 12px; }
+        .item-card {
+            background: #334155;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .item-card.completed {
+            background: rgba(34, 211, 238, 0.1);
+            border: 1px solid rgba(34, 211, 238, 0.3);
+        }
+        .item-header {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            cursor: pointer;
+        }
+        .checkbox {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: #1e293b;
+            border: 2px solid #475569;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            flex-shrink: 0;
+            font-size: 14px;
+        }
+        .checkbox.checked {
+            background: #10b981;
+            border-color: #10b981;
+        }
+        .checkbox.mastered {
+            background: #f59e0b;
+            border-color: #f59e0b;
+        }
+        .checkbox.subsumed {
+            background: #8b5cf6;
+            border-color: #8b5cf6;
+        }
+        .checkbox-label {
+            font-size: 10px;
+            color: #94a3b8;
+            text-align: center;
+            margin-top: 2px;
+        }
+        .item-name {
+            flex: 1;
+            font-weight: 600;
+            color: #22d3ee;
+            font-size: 16px;
+        }
+        .expand-icon {
+            color: #94a3b8;
+            transition: transform 0.3s;
+            margin-left: 8px;
+            font-size: 20px;
+        }
+        .expand-icon.expanded { transform: rotate(180deg); }
+        .item-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .item-details.expanded { max-height: 2000px; }
+        .component-list { padding: 0 16px 16px 16px; }
+        .component-item {
+            background: #1e293b;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+        .component-checkbox {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            background: #0f172a;
+            border: 2px solid #475569;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .component-checkbox.checked {
+            background: #10b981;
+            border-color: #10b981;
+        }
+        .component-info { flex: 1; }
+        .component-name { font-weight: 600; color: #e2e8f0; margin-bottom: 4px; }
+        .component-materials { font-size: 12px; color: #94a3b8; }
+        .simple-item {
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            background: #334155;
+            border-radius: 12px;
+        }
+        .simple-item-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .simple-item.completed {
+            background: rgba(34, 211, 238, 0.1);
+            border: 1px solid rgba(34, 211, 238, 0.3);
+        }
+        .simple-requirements {
+            margin-left: 40px;
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+        .simple-source {
+            margin-left: 40px;
+            font-size: 12px;
+            color: #06b6d4;
+            font-style: italic;
+        }
+        .resource-card {
+            background: #334155;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .resource-name {
+            font-weight: 600;
+            color: #22d3ee;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        .resource-type {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+        .resource-location {
+            font-size: 13px;
+            color: #10b981;
+        }
+        .no-results { text-align: center; padding: 40px; color: #64748b; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎮 Warframe Arsenal Tracker</h1>
+        <p class="subtitle">Track every frame, weapon, and companion</p>
+    </div>
+
+```
+<div class="controls">
+    <input type="text" class="search-box" id="searchBox" placeholder="Search items...">
+    <button class="btn" onclick="exportToExcel()">📥 Export Excel</button>
+    <button class="btn btn-secondary" onclick="exportToCSV()">📄 Export CSV</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📤 Import</button>
+    <input type="file" id="importFile" accept=".csv,.xlsx" style="display: none;" onchange="importData(event)">
+</div>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="progress-bar" id="progressBar">
+    <div class="progress-text">
+        <span>Progress</span>
+        <span id="progressText">0 / 0</span>
+    </div>
+    <div class="progress-fill-container">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+</div>
+
+<div class="item-list" id="itemList"></div>
+
+<script>
+    let currentTab = 'warframes';
+    let searchTerm = '';
+    let state = {};
+    
+    const categories = {
+        warframes: 'Warframes',
+        primeframes: 'Prime Frames',
+        primary: 'Primary',
+        primeprimary: 'Prime Primary',
+        secondary: 'Secondary',
+        primesecondary: 'Prime Secondary',
+        melee: 'Melee',
+        primemelee: 'Prime Melee',
+        archwing: 'Archwing',
+        archgun: 'Arch-Guns',
+        primearch: 'Prime Archwing',
+        archmelee: 'Arch-Melee',
+        companions: 'Companions',
+        primesentinels: 'Prime Sentinels',
+        resources: 'Resources',
+        relics: 'Relic Farming'
+    };
+
+    const warframeNames = ['Ash', 'Atlas', 'Banshee', 'Baruuk', 'Caliban', 'Chroma', 'Citrine', 'Dagath', 'Dante', 'Ember', 'Equinox', 'Excalibur', 'Frost', 'Gara', 'Garuda', 'Gauss', 'Grendel', 'Gyre', 'Harrow', 'Hildryn', 'Hydroid', 'Inaros', 'Ivara', 'Jade', 'Khora', 'Koumei', 'Kullervo', 'Lavos', 'Limbo', 'Loki', 'Mag', 'Mesa', 'Mirage', 'Nekros', 'Nezha', 'Nidus', 'Nova', 'Nyx', 'Oberon', 'Octavia', 'Protea', 'Qorvex', 'Revenant', 'Rhino', 'Saryn', 'Sevagoth', 'Styanax', 'Titania', 'Trinity', 'Valkyr', 'Vauban', 'Volt', 'Voruna', 'Wisp', 'Wukong', 'Xaku', 'Yareli', 'Zephyr'];
+    
+    const data = {
+        warframes: warframeNames.map(name => ({
+            name: name,
+            expandable: true,
+            components: name === 'Equinox' ? [
+                { name: 'Day Neuroptics', materials: 'Neural Sensors (1), Alloy Plate (150), Polymer Bundle (150), Rubedo (500)' },
+                { name: 'Day Chassis', materials: 'Morphics (1), Ferrite (1000), Rubedo (300)' },
+                { name: 'Day Systems', materials: 'Control Module (1), Salvage (500), Plastids (220), Circuits (500)' },
+                { name: 'Night Neuroptics', materials: 'Neural Sensors (1), Alloy Plate (150), Polymer Bundle (150), Rubedo (500)' },
+                { name: 'Night Chassis', materials: 'Morphics (1), Ferrite (1000), Rubedo (300)' },
+                { name: 'Night Systems', materials: 'Control Module (1), Salvage (500), Plastids (220), Circuits (500)' }
+            ] : [
+                { name: 'Neuroptics', materials: 'Neural Sensors (1), Alloy Plate (150), Polymer Bundle (150), Rubedo (500)' },
+                { name: 'Chassis', materials: 'Morphics (1), Ferrite (1000), Rubedo (300)' },
+                { name: 'Systems', materials: 'Control Module (1), Salvage (500), Plastids (220), Circuits (500)' }
+            ]
+        })),
+        primeframes: [
+            { name: 'Ash Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith A2, Meso N11' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo A3, Axi A8' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith A3, Neo A8' }
+            ]},
+            { name: 'Banshee Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith B4, Meso B3' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo B5, Axi B3' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith B6, Neo B8' }
+            ]},
+            { name: 'Chroma Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith C4, Meso C4' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo C1, Axi C4' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith C5, Neo C2' }
+            ]},
+            { name: 'Ember Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith E1, Meso E2' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo E1, Axi E1' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith E2, Neo E2' }
+            ]},
+            { name: 'Equinox Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith E3, Meso E3' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo E3, Axi E2' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith E4, Neo E4' }
+            ]},
+            { name: 'Frost Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith F2, Meso F3' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo F1, Axi F2' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith F3, Neo F2' }
+            ]},
+            { name: 'Gara Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith G3, Meso G4' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo G2, Axi G5' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith G4, Neo G3' }
+            ]},
+            { name: 'Hydroid Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith H2, Meso H1' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo H1, Axi H3' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith H1, Neo H4' }
+            ]},
+            { name: 'Limbo Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith L1, Meso L1' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo L1, Axi L4' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith L2, Neo L2' }
+            ]},
+            { name: 'Mesa Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith M6, Meso M4' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo M4, Axi M2' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith M7, Neo M5' }
+            ]},
+            { name: 'Nekros Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith N4, Meso N6' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo N7, Axi N5' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith N5, Neo N8' }
+            ]},
+            { name: 'Nova Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith N1, Meso N1' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo N1, Axi N3' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith N2, Neo N2' }
+            ]},
+            { name: 'Oberon Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith O1, Meso O3' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo O1, Axi O4' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith O2, Neo O2' }
+            ]},
+            { name: 'Rhino Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith R1, Meso R1' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo R1, Axi R1' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith R4, Neo R2' }
+            ]},
+            { name: 'Saryn Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith S7, Meso S7' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo S10, Axi S5' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith S8, Neo S11' }
+            ]},
+            { name: 'Trinity Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith T1, Meso T1' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo T1, Axi T1' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith T2, Neo T2' }
+            ]},
+            { name: 'Volt Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith V1, Meso V1' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo V1, Axi V5' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith V2, Neo V2' }
+            ]},
+            { name: 'Wukong Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith W3, Meso W3' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo W3, Axi W1' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith W4, Neo W4' }
+            ]},
+            { name: 'Zephyr Prime', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Alloy Plate (1500), Neural Sensors (2), Polymer Bundle (500) - Relics: Lith Z1, Meso Z3' },
+                { name: 'Chassis', materials: 'Rubedo (500), Circuits (100), Control Module (3) - Relics: Neo Z2, Axi Z1' },
+                { name: 'Systems', materials: 'Morphics (3), Salvage (1000), Plastids (500) - Relics: Lith Z2, Neo Z3' }
+            ]}
+        ],
+        primeprimary: [
+            { name: 'Braton Prime', requirements: 'Barrel, Receiver, Stock - Relics: Lith B3, Meso B4, Neo B3', source: 'Void Relics' },
+            { name: 'Burston Prime', requirements: 'Barrel, Receiver, Stock - Relics: Lith B9, Meso B7, Neo B9', source: 'Void Relics' },
+            { name: 'Boar Prime', requirements: 'Barrel, Receiver, Stock - Relics: Lith B10, Meso B8, Neo B10', source: 'Void Relics' },
+            { name: 'Cernos Prime', requirements: 'Upper Limb, Lower Limb, Grip, String - Relics: Lith C6, Meso C5, Neo C6', source: 'Void Relics' },
+            { name: 'Corinth Prime', requirements: 'Barrel, Receiver, Stock - Relics: Lith C7, Meso C6, Axi C5', source: 'Void Relics' },
+            { name: 'Dex Dakra', requirements: 'Anniversary weapon', source: 'Warframe Anniversary' },
+            { name: 'Euphona Prime', requirements: 'Barrel, Receiver - Relics: Lith E5, Meso E4, Axi E3', source: 'Void Relics' },
+            { name: 'Latron Prime', requirements: 'Barrel, Receiver, Stock - Relics: Lith L5, Meso L3, Neo L5', source: 'Void Relics' },
+            { name: 'Paris Prime', requirements: 'Upper Limb, Lower Limb, Grip, String - Relics: Lith P1, Meso P1, Neo P1', source: 'Void Relics' },
+            { name: 'Rubico Prime', requirements: 'Barrel, Receiver, Stock - Relics: Lith R5, Meso R5, Axi R2', source: 'Void Relics' },
+            { name: 'Soma Prime', requirements: 'Barrel, Receiver, Stock - Relics: Lith S1, Meso S1, Neo S1', source: 'Void Relics' },
+            { name: 'Stradavar Prime', requirements: 'Barrel, Receiver, Stock - Relics: Lith S10, Meso S9, Axi S6', source: 'Void Relics' },
+            { name: 'Sybaris Prime', requirements: 'Barrel, Receiver, Stock - Relics: Lith S11, Meso S10, Neo S12', source: 'Void Relics' },
+            { name: 'Tenora Prime', requirements: 'Barrel, Receiver, Stock - Relics: Lith T8, Meso T7, Axi T3', source: 'Void Relics' },
+            { name: 'Tiberon Prime', requirements: 'Barrel, Receiver, Stock - Relics: Lith T9, Meso T8, Neo T9', source: 'Void Relics' },
+            { name: 'Tigris Prime', requirements: 'Barrel, Receiver, Stock - Relics: Lith T7, Meso T6, Axi T2', source: 'Void Relics' },
+            { name: 'Vectis Prime', requirements: 'Barrel, Receiver, Stock - Relics: Lith V3, Meso V2, Neo V3', source: 'Void Relics' },
+            { name: 'Zhuge Prime', requirements: 'Barrel, Receiver, String - Relics: Lith Z3, Meso Z4, Neo Z4', source: 'Void Relics' }
+        ],
+        primesecondary: [
+            { name: 'Aklex Prime', requirements: 'Link, Barrel (2) - Relics: Lith A8, Meso A5, Neo A6', source: 'Void Relics' },
+            { name: 'Euphona Prime', requirements: 'Barrel, Receiver - Relics: Lith E5, Meso E4, Axi E3', source: 'Void Relics' },
+            { name: 'Lex Prime', requirements: 'Barrel, Receiver - Relics: Lith L6, Meso L4, Neo L6', source: 'Void Relics' },
+            { name: 'Pyrana Prime', requirements: 'Barrel, Receiver - Relics: Lith P3, Meso P3, Axi P1', source: 'Void Relics' },
+            { name: 'Sicarus Prime', requirements: 'Barrel, Receiver - Relics: Lith S4, Meso S4, Neo S4', source: 'Void Relics' },
+            { name: 'Vasto Prime', requirements: 'Barrel, Receiver - Relics: Lith V4, Meso V3, Neo V4', source: 'Void Relics' },
+            { name: 'Ballistica Prime', requirements: 'Upper Limb, Lower Limb, Receiver - Relics: Lith B7, Meso B5, Neo B6', source: 'Void Relics' },
+            { name: 'Bronco Prime', requirements: 'Barrel, Receiver - Relics: Lith B8, Meso B6, Neo B7', source: 'Void Relics' },
+            { name: 'Hikou Prime', requirements: 'Stars, Pouch - Relics: Lith H3, Meso H2, Neo H2', source: 'Void Relics' },
+            { name: 'Kunai Prime', requirements: 'Blade, Pouch - Relics: Lith K1, Meso K2, Neo K1', source: 'Void Relics' },
+            { name: 'Magnus Prime', requirements: 'Barrel, Receiver - Relics: Lith M1, Meso M2, Neo M1', source: 'Void Relics' },
+            { name: 'Spira Prime', requirements: 'Blade, Pouch - Relics: Lith S9, Meso S8, Neo S9', source: 'Void Relics' }
+        ],
+        primemelee: [
+            { name: 'Ankyros Prime', requirements: 'Blade, Gauntlet - Relics: Lith A9, Meso A6, Neo A9', source: 'Void Relics' },
+            { name: 'Bo Prime', requirements: 'Ornament, Handle - Relics: Lith B11, Meso B9, Neo B11', source: 'Void Relics' },
+            { name: 'Dakra Prime', requirements: 'Blade, Handle - Relics: Lith D1, Meso D1, Neo D1', source: 'Void Relics' },
+            { name: 'Fang Prime', requirements: 'Blade, Handle - Relics: Lith F4, Meso F4, Neo F3', source: 'Void Relics' },
+            { name: 'Fragor Prime', requirements: 'Head, Handle - Relics: Lith F5, Meso F5, Axi F3', source: 'Void Relics' },
+            { name: 'Galatine Prime', requirements: 'Blade, Handle - Relics: Lith G1, Meso G1, Axi G1', source: 'Void Relics' },
+            { name: 'Glaive Prime', requirements: 'Blade, Disc - Relics: Lith G2, Meso G2, Axi G2', source: 'Void Relics' },
+            { name: 'Gram Prime', requirements: 'Blade, Handle - Relics: Lith G11, Meso G8, Axi G3', source: 'Void Relics' },
+            { name: 'Karyst Prime', requirements: 'Blade, Handle - Relics: Lith K3, Meso K3, Neo K2', source: 'Void Relics' },
+            { name: 'Kogake Prime', requirements: 'Boot, Gauntlet - Relics: Lith K4, Meso K4, Neo K3', source: 'Void Relics' },
+            { name: 'Nikana Prime', requirements: 'Blade, Hilt - Relics: Lith N11, Meso N3, Axi N1', source: 'Void Relics' },
+            { name: 'Nami Skyla Prime', requirements: 'Blade, Handle - Relics: Lith N12, Meso N7, Neo N9', source: 'Void Relics' },
+            { name: 'Orthos Prime', requirements: 'Blade, Handle - Relics: Lith O5, Meso O1, Neo O5', source: 'Void Relics' },
+            { name: 'Reaper Prime', requirements: 'Blade, Handle - Relics: Lith R6, Meso R2, Axi R4', source: 'Void Relics' },
+            { name: 'Scindo Prime', requirements: 'Blade, Handle - Relics: Lith S6, Meso S6, Axi S1', source: 'Void Relics' },
+            { name: 'Silva & Aegis Prime', requirements: 'Blade, Guard, Hilt - Relics: Lith S12, Meso S11, Axi S7', source: 'Void Relics' },
+            { name: 'Dual Kamas Prime', requirements: 'Blade, Handle - Relics: Lith D2, Meso D2, Neo D2', source: 'Void Relics' }
+        ],
+        primearch: [
+            { name: 'Odonata Prime', expandable: true, components: [
+                { name: 'Harness', materials: 'Morphics (5), Rubedo (500), Salvage (1500)' },
+                { name: 'Systems', materials: 'Control Module (3), Plastids (1000), Ferrite (500)' },
+                { name: 'Wings', materials: 'Oxium (500), Plastids (1500), Rubedo (2000)' }
+            ]}
+        ],
+        primesentinels: [
+            { name: 'Carrier Prime', expandable: true, components: [
+                { name: 'Carapace', materials: 'Alloy Plate (1200), Circuits (600), Polymer Bundle (400) - Relics: Lith C2, Meso C2' },
+                { name: 'Cerebrum', materials: 'Neural Sensors (2), Salvage (800), Plastids (300) - Relics: Neo C4, Axi C1' },
+                { name: 'Systems', materials: 'Control Module (2), Morphics (3), Rubedo (800) - Relics: Lith C3, Neo C5' }
+            ]},
+            { name: 'Helios Prime', expandable: true, components: [
+                { name: 'Carapace', materials: 'Alloy Plate (1200), Circuits (600), Polymer Bundle (400) - Relics: Lith H8, Meso H5' },
+                { name: 'Cerebrum', materials: 'Neural Sensors (2), Salvage (800), Plastids (300) - Relics: Neo H7, Axi H4' },
+                { name: 'Systems', materials: 'Control Module (2), Morphics (3), Rubedo (800) - Relics: Lith H9, Neo H8' }
+            ]}
+        ],
+        primary: [
+            { name: 'Acceltra', requirements: 'Fieldron (5), Neurodes (10), Argon Crystal (2)', source: 'Demolyst drops' },
+            { name: 'Aeolak', requirements: 'Fieldron (5), Morphics (5), Salvage (800)', source: 'Entrati standing' },
+            { name: 'Amprex', requirements: 'Fieldron (5), Neurodes (5), Plastids (900)', source: 'Energy Lab (Dojo)' },
+            { name: 'Arca Plasmor', requirements: 'Fieldron (10), Polymer Bundle (5500), Rubedo (6500)', source: 'Energy Lab (Dojo)' },
+            { name: 'Astilla', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Attica', requirements: 'Morphics (5), Plastids (900), Polymer Bundle (1200)', source: 'Market' },
+            { name: 'Basmu', requirements: 'Fieldron (10), Hexenon (1200), Argon Crystal (3)', source: 'Market' },
+            { name: 'Baza', requirements: 'Fieldron (5), Plastids (7500), Oxium (50)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Boltor', requirements: 'Alloy Plate (900), Neurodes (1), Salvage (900)', source: 'Market' },
+            { name: 'Boar', requirements: 'Morphics (3), Ferrite (900), Salvage (1200)', source: 'Market' },
+            { name: 'Braton', requirements: 'Alloy Plate (900), Ferrite (600), Salvage (300)', source: 'Market' },
+            { name: 'Bubonico', requirements: 'Mutagen Mass (5), Neurodes (10), Rubedo (7500)', source: 'Father (Deimos)' },
+            { name: 'Burston', requirements: 'Morphics (3), Plastids (600), Salvage (900)', source: 'Market' },
+            { name: 'Buzlok', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Chem Lab (Dojo)' },
+            { name: 'Carmine Penta', requirements: 'Detonite Injector (5), Neurodes (3), Plastids (1200)', source: 'Market' },
+            { name: 'Cedo', requirements: 'Mutagen Mass (10), Nano Spores (15000), Polymer Bundle (8500)', source: 'Lavos component' },
+            { name: 'Cernos', requirements: 'Morphics (5), Plastids (900), Polymer Bundle (1200)', source: 'Market' },
+            { name: 'Convectrix', requirements: 'Fieldron (5), Cryotic (600), Oxium (150)', source: 'Energy Lab (Dojo)' },
+            { name: 'Corinth', requirements: 'Detonite Injector (5), Ferrite (8500), Nano Spores (12000)', source: 'Market' },
+            { name: 'Daikyu', requirements: 'Plastids (1200), Oxium (75), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Dera', requirements: 'Fieldron (5), Ferrite (900), Salvage (600)', source: 'Market' },
+            { name: 'Dex Sybaris', requirements: 'Anniversary gift', source: 'Warframe Anniversary' },
+            { name: 'Drakgoon', requirements: 'Detonite Injector (5), Ferrite (900), Salvage (1200)', source: 'Market' },
+            { name: 'Dread', requirements: 'Neurodes (2), Polymer Bundle (1200), Rubedo (900)', source: 'Stalker drop' },
+            { name: 'Exergis', requirements: 'Fieldron (10), Cryotic (1500), Rubedo (6500)', source: 'Fortuna standing' },
+            { name: 'Ferrox', requirements: 'Fieldron (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Flux Rifle', requirements: 'Fieldron (5), Morphics (5), Rubedo (1200)', source: 'Energy Lab (Dojo)' },
+            { name: 'Fulmin', requirements: 'Wisp part', source: 'Auto-build with Wisp' },
+            { name: 'Glaxion', requirements: 'Fieldron (5), Cryotic (600), Morphics (3)', source: 'Energy Lab (Dojo)' },
+            { name: 'Gorgon', requirements: 'Morphics (5), Salvage (1200), Polymer Bundle (900)', source: 'Market' },
+            { name: 'Grakata', requirements: 'Alloy Plate (900), Plastids (450), Salvage (1200)', source: 'Market' },
+            { name: 'Grinlok', requirements: 'Morphics (5), Plastids (900), Salvage (1200)', source: 'Market' },
+            { name: 'Harpak', requirements: 'Detonite Injector (5), Cryotic (600), Argon Crystal (2)', source: 'Chem Lab (Dojo)' },
+            { name: 'Hek', requirements: 'Alloy Plate (900), Circuits (600), Salvage (1200)', source: 'Market' },
+            { name: 'Hema', requirements: 'Mutagen Mass (5), Mutagen Sample (5000)', source: 'Bio Lab (Dojo)' },
+            { name: 'Hind', requirements: 'Morphics (3), Plastids (600), Salvage (900)', source: 'Market' },
+            { name: 'Ignis', requirements: 'Detonite Injector (5), Neurodes (2), Plastids (500)', source: 'Chem Lab (Dojo)' },
+            { name: 'Javlok', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Chem Lab (Dojo)' },
+            { name: 'Karak', requirements: 'Alloy Plate (900), Ferrite (600), Salvage (450)', source: 'Market' },
+            { name: 'Komorex', requirements: 'Fieldron (10), Hexenon (1000), Argon Crystal (2)', source: 'Market' },
+            { name: 'Kohm', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Chem Lab (Dojo)' },
+            { name: 'Kuva Bramma', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Kuva Chakkhurr', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Kuva Drakgoon', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Kuva Hek', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Kuva Hind', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Kuva Karak', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Kuva Kohm', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Kuva Ogris', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Kuva Quartakk', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Kuva Tonkor', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Kuva Zarr', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Lanka', requirements: 'Fieldron (5), Morphics (5), Plastids (1100)', source: 'Energy Lab (Dojo)' },
+            { name: 'Latron', requirements: 'Morphics (2), Plastids (600), Salvage (1200)', source: 'Market' },
+            { name: 'Lenz', requirements: 'Fieldron (10), Cryotic (1500), Oxium (300)', source: 'Energy Lab (Dojo)' },
+            { name: 'Miter', requirements: 'Alloy Plate (900), Circuits (600), Salvage (1200)', source: 'Market' },
+            { name: 'Mutalist Cernos', requirements: 'Mutagen Mass (5), Fieldron (5), Argon Crystal (2)', source: 'Invasions' },
+            { name: 'Mutalist Quanta', requirements: 'Mutagen Mass (5), Fieldron (5), Argon Crystal (2)', source: 'Bio Lab (Dojo)' },
+            { name: 'Nataruk', requirements: 'New War parts', source: 'The New War' },
+            { name: 'Ogris', requirements: 'Detonite Injector (5), Morphics (3), Salvage (900)', source: 'Market' },
+            { name: 'Opticor', requirements: 'Fieldron (5), Gallium (5), Argon Crystal (2)', source: 'Energy Lab (Dojo)' },
+            { name: 'Panthera', requirements: 'Fieldron (5), Alloy Plate (900), Circuits (600)', source: 'Market' },
+            { name: 'Paris', requirements: 'Morphics (1), Plastids (600), Polymer Bundle (900)', source: 'Market' },
+            { name: 'Paracyst', requirements: 'Mutagen Mass (5), Plastids (1200), Argon Crystal (2)', source: 'Bio Lab (Dojo)' },
+            { name: 'Penta', requirements: 'Detonite Injector (5), Neurodes (3), Plastids (1200)', source: 'Market' },
+            { name: 'Phantasma', requirements: 'Fieldron (10), Cryotic (1200), Argon Crystal (3)', source: 'Energy Lab (Dojo)' },
+            { name: 'Phenmor', requirements: 'Zariman standing', source: 'Chrysalith' },
+            { name: 'Proboscis Cernos', requirements: 'Cernos (1), Mutagen Mass (10), Argon Crystal (3)', source: 'Market' },
+            { name: 'Quanta', requirements: 'Fieldron (5), Cryotic (600), Plastids (900)', source: 'Energy Lab (Dojo)' },
+            { name: 'Quartakk', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Rubico', requirements: 'Detonite Injector (2), Cryotic (925), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Scourge', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Simulor', requirements: 'Fieldron (5), Cryotic (600), Argon Crystal (2)', source: 'Energy Lab (Dojo)' },
+            { name: 'Soma', requirements: 'Alloy Plate (1200), Morphics (5), Salvage (800)', source: 'Market' },
+            { name: 'Stahlta', requirements: 'Fieldron (15), Hexenon (1500), Argon Crystal (3)', source: 'Market' },
+            { name: 'Strun', requirements: 'Alloy Plate (900), Ferrite (600), Salvage (300)', source: 'Market' },
+            { name: 'Supra', requirements: 'Fieldron (5), Morphics (5), Polymer Bundle (3000)', source: 'Energy Lab (Dojo)' },
+            { name: 'Synapse', requirements: 'Mutagen Mass (5), Neurodes (5), Plastids (1200)', source: 'Bio Lab (Dojo)' },
+            { name: 'Tenora', requirements: 'Fieldron (10), Oxium (300), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Tetra', requirements: 'Fieldron (5), Ferrite (900), Salvage (600)', source: 'Market' },
+            { name: 'Tiberon', requirements: 'Morphics (5), Plastids (1200), Salvage (1500)', source: 'Market' },
+            { name: 'Tigris', requirements: 'Detonite Injector (2), Plastids (900), Rubedo (1200)', source: 'Market' },
+            { name: 'Tonkor', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Chem Lab (Dojo)' },
+            { name: 'Torid', requirements: 'Mutagen Mass (5), Neurodes (3), Salvage (4500)', source: 'Bio Lab (Dojo)' },
+            { name: 'Trumna', requirements: 'Fieldron (20), Scintillant (5), Argon Crystal (3)', source: 'Deimos' },
+            { name: 'Vectis', requirements: 'Alloy Plate (1200), Morphics (3), Polymer Bundle (900)', source: 'Market' },
+            { name: 'Veldt', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Vulkar', requirements: 'Morphics (3), Plastids (900), Polymer Bundle (1200)', source: 'Market' },
+            { name: 'Zarr', requirements: 'Detonite Injector (5), Oxium (300), Argon Crystal (2)', source: 'Chem Lab (Dojo)' },
+            { name: 'Zhuge', requirements: 'Fieldron (5), Plastids (900), Polymer Bundle (1200)', source: 'Market' }
+        ],
+        secondary: [
+            { name: 'Acrid', requirements: 'Mutagen Mass (5), Neurodes (2), Salvage (800)', source: 'Bio Lab (Dojo)' },
+            { name: 'Afuris', requirements: 'Furis (2), Credits (25000)', source: 'Build 2x Furis' },
+            { name: 'Akarius', requirements: 'Fieldron (5), Neurodes (10), Argon Crystal (2)', source: 'Demolyst drops' },
+            { name: 'Akbolto', requirements: 'Bolto (2), Credits (30000)', source: 'Build 2x Bolto' },
+            { name: 'Akbronco', requirements: 'Bronco (2), Credits (25000)', source: 'Build 2x Bronco' },
+            { name: 'Akjagara', requirements: 'Dual Skana (2), Twin Vipers (2), Credits (50000)', source: 'Build requirement' },
+            { name: 'Aklato', requirements: 'Lato (2), Credits (25000)', source: 'Build 2x Lato' },
+            { name: 'Aklex', requirements: 'Lex (2), Credits (30000)', source: 'Build 2x Lex' },
+            { name: 'Akmag', requirements: 'Magnus (2), Credits (30000)', source: 'Build 2x Magnus' },
+            { name: 'Aksomati', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Akstiletto', requirements: 'Stiletto (2), Credits (30000)', source: 'Build 2x Stiletto' },
+            { name: 'Akvasto', requirements: 'Vasto (2), Credits (30000)', source: 'Build 2x Vasto' },
+            { name: 'Angstrum', requirements: 'Fieldron (5), Morphics (3), Polymer Bundle (900)', source: 'Market' },
+            { name: 'Atomos', requirements: 'Fieldron (5), Neurodes (2), Polymer Bundle (1200)', source: 'Energy Lab (Dojo)' },
+            { name: 'Ballistica', requirements: 'Fieldron (5), Plastids (600), Salvage (900)', source: 'Market' },
+            { name: 'Bolto', requirements: 'Morphics (2), Salvage (800), Ferrite (400)', source: 'Market' },
+            { name: 'Brakk', requirements: 'Detonite Injector (5), Morphics (5), Argon Crystal (2)', source: 'Grustrag Three' },
+            { name: 'Bronco', requirements: 'Morphics (2), Ferrite (400), Salvage (600)', source: 'Market' },
+            { name: 'Castanas', requirements: 'Detonite Injector (5), Morphics (3), Salvage (900)', source: 'Market' },
+            { name: 'Cestra', requirements: 'Fieldron (5), Plastids (900), Polymer Bundle (1200)', source: 'Energy Lab (Dojo)' },
+            { name: 'Cyanex', requirements: 'Fieldron (10), Hexenon (900), Argon Crystal (2)', source: 'Market' },
+            { name: 'Cycron', requirements: 'Fieldron (10), Hexenon (1000), Argon Crystal (2)', source: 'Energy Lab (Dojo)' },
+            { name: 'Despair', requirements: 'Morphics (3), Plastids (600), Rubedo (900)', source: 'Stalker drop' },
+            { name: 'Detron', requirements: 'Fieldron (5), Morphics (3), Rubedo (1200)', source: 'Invasions' },
+            { name: 'Dual Cestra', requirements: 'Cestra (2), Credits (35000)', source: 'Build 2x Cestra' },
+            { name: 'Dual Toxocyst', requirements: 'Detonite Injector (5), Mutagen Mass (5), Neurodes (3)', source: 'Chem Lab (Dojo)' },
+            { name: 'Embolist', requirements: 'Mutagen Mass (5), Plastids (900), Salvage (600)', source: 'Bio Lab (Dojo)' },
+            { name: 'Epitaph', requirements: 'Fieldron (10), Scintillant (3), Argon Crystal (2)', source: 'Deimos' },
+            { name: 'Furis', requirements: 'Morphics (2), Salvage (800), Polymer Bundle (450)', source: 'Market' },
+            { name: 'Fusilai', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Gammacor', requirements: 'Fieldron (5), Oxium (150), Argon Crystal (2)', source: 'Energy Lab (Dojo)' },
+            { name: 'Hikou', requirements: 'Alloy Plate (900), Ferrite (600), Salvage (450)', source: 'Market' },
+            { name: 'Hystrix', requirements: 'Fieldron (10), Oxium (350), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Knell', requirements: 'Detonite Injector (5), Oxium (200), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Kohmak', requirements: 'Detonite Injector (5), Cryotic (600), Argon Crystal (2)', source: 'Chem Lab (Dojo)' },
+            { name: 'Kraken', requirements: 'Morphics (3), Salvage (900), Ferrite (600)', source: 'Market' },
+            { name: 'Kulstar', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Chem Lab (Dojo)' },
+            { name: 'Kunai', requirements: 'Alloy Plate (900), Ferrite (600), Salvage (300)', source: 'Market' },
+            { name: 'Kuva Brakk', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Kuva Kraken', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Kuva Nukor', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Kuva Seer', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Kuva Twin Stubbas', requirements: 'Kuva Lich weapon', source: 'Kuva Lich' },
+            { name: 'Laetum', requirements: 'Zariman standing', source: 'Chrysalith' },
+            { name: 'Lato', requirements: 'Starter weapon', source: 'Starting weapon' },
+            { name: 'Lex', requirements: 'Morphics (3), Ferrite (900), Salvage (600)', source: 'Market' },
+            { name: 'Magnus', requirements: 'Morphics (2), Ferrite (600), Salvage (450)', source: 'Market' },
+            { name: 'Marelok', requirements: 'Detonite Injector (5), Cryotic (600), Argon Crystal (2)', source: 'Chem Lab (Dojo)' },
+            { name: 'Nukor', requirements: 'Fieldron (5), Plastids (900), Salvage (1200)', source: 'Energy Lab (Dojo)' },
+            { name: 'Ocucor', requirements: 'Fieldron (10), Hexenon (900), Argon Crystal (2)', source: 'Energy Lab (Dojo)' },
+            { name: 'Pandero', requirements: 'Detonite Injector (5), Cryotic (600), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Plinx', requirements: 'Fieldron (10), Oxium (300), Argon Crystal (2)', source: 'Energy Lab (Dojo)' },
+            { name: 'Pox', requirements: 'Mutagen Mass (5), Plastids (900), Argon Crystal (2)', source: 'Bio Lab (Dojo)' },
+            { name: 'Pyrana', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Quatz', requirements: 'Fieldron (10), Hexenon (1200), Argon Crystal (2)', source: 'Market' },
+            { name: 'Seer', requirements: 'Detonite Injector (5), Morphics (3), Salvage (900)', source: 'Market' },
+            { name: 'Sepulcrum', requirements: 'Fieldron (10), Scintillant (3), Argon Crystal (2)', source: 'Deimos' },
+            { name: 'Sicarus', requirements: 'Morphics (3), Ferrite (800), Salvage (1200)', source: 'Market' },
+            { name: 'Sonicor', requirements: 'Fieldron (5), Cryotic (600), Argon Crystal (2)', source: 'Energy Lab (Dojo)' },
+            { name: 'Spectra', requirements: 'Fieldron (5), Morphics (3), Polymer Bundle (900)', source: 'Energy Lab (Dojo)' },
+            { name: 'Spira', requirements: 'Alloy Plate (900), Plastids (450), Salvage (600)', source: 'Market' },
+            { name: 'Staticor', requirements: 'Fieldron (5), Cryotic (800), Oxium (50)', source: 'Energy Lab (Dojo)' },
+            { name: 'Stug', requirements: 'Mutagen Mass (5), Neurodes (2), Salvage (900)', source: 'Bio Lab (Dojo)' },
+            { name: 'Stubba', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Talons', requirements: 'Detonite Injector (5), Morphics (3), Salvage (900)', source: 'Market' },
+            { name: 'Twin Grakatas', requirements: 'Grakata (2), Credits (35000)', source: 'Build 2x Grakata' },
+            { name: 'Twin Gremlins', requirements: 'Detonite Injector (5), Cryotic (600), Salvage (900)', source: 'Chem Lab (Dojo)' },
+            { name: 'Twin Kohmak', requirements: 'Kohmak (2), Credits (40000)', source: 'Build 2x Kohmak' },
+            { name: 'Twin Rogga', requirements: 'Detonite Injector (5), Cryotic (600), Salvage (900)', source: 'Chem Lab (Dojo)' },
+            { name: 'Twin Vipers', requirements: 'Morphics (3), Salvage (900), Polymer Bundle (600)', source: 'Market' },
+            { name: 'Tysis', requirements: 'Mutagen Mass (5), Ferrite (900), Salvage (600)', source: 'Bio Lab (Dojo)' },
+            { name: 'Vasto', requirements: 'Morphics (3), Ferrite (900), Salvage (1200)', source: 'Market' },
+            { name: 'Viper', requirements: 'Morphics (2), Salvage (600), Polymer Bundle (300)', source: 'Market' },
+            { name: 'Zakti', requirements: 'Mutagen Mass (5), Plastids (900), Salvage (800)', source: 'Bio Lab (Dojo)' },
+            { name: 'Zymos', requirements: 'Mutagen Mass (10), Scintillant (3), Argon Crystal (2)', source: 'Deimos' }
+        ],
+        melee: [
+            { name: 'Ack & Brunt', requirements: 'Alloy Plate (900), Ferrite (600), Salvage (300)', source: 'Market' },
+            { name: 'Amphis', requirements: 'Fieldron (5), Plastids (900), Polymer Bundle (600)', source: 'Market' },
+            { name: 'Anku', requirements: 'Morphics (3), Plastids (600), Salvage (900)', source: 'Market' },
+            { name: 'Ankyros', requirements: 'Alloy Plate (900), Ferrite (600), Salvage (300)', source: 'Market' },
+            { name: 'Arca Titron', requirements: 'Fieldron (10), Cryotic (1200), Argon Crystal (2)', source: 'Energy Lab (Dojo)' },
+            { name: 'Atterax', requirements: 'Morphics (5), Plastids (900), Polymer Bundle (1200)', source: 'Market' },
+            { name: 'Bo', requirements: 'Morphics (2), Ferrite (800), Salvage (600)', source: 'Market' },
+            { name: 'Boltace', requirements: 'Boltor (2), Credits (30000)', source: 'Build 2x Boltor' },
+            { name: 'Broken War', requirements: 'Quest reward', source: 'The Second Dream' },
+            { name: 'Caustacyst', requirements: 'Mutagen Mass (10), Plastids (4500), Argon Crystal (2)', source: 'Bio Lab (Dojo)' },
+            { name: 'Ceramic Dagger', requirements: 'Alloy Plate (450), Ferrite (300), Salvage (150)', source: 'Market' },
+            { name: 'Cerata', requirements: 'Mutagen Mass (5), Oxium (250), Argon Crystal (2)', source: 'Bio Lab (Dojo)' },
+            { name: 'Cobra & Crane', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Cronus', requirements: 'Morphics (3), Ferrite (900), Salvage (600)', source: 'Vor drop' },
+            { name: 'Dark Dagger', requirements: 'Morphics (3), Plastids (600), Salvage (900)', source: 'Market' },
+            { name: 'Dark Split-Sword', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Dark Sword', requirements: 'Morphics (3), Plastids (600), Salvage (900)', source: 'Market' },
+            { name: 'Destreza', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Diboko', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Dual Cleavers', requirements: 'Alloy Plate (900), Ferrite (600), Salvage (450)', source: 'Market' },
+            { name: 'Dual Ether', requirements: 'Morphics (3), Plastids (600), Polymer Bundle (900)', source: 'Market' },
+            { name: 'Dual Heat Swords', requirements: 'Alloy Plate (900), Ferrite (600), Salvage (450)', source: 'Market' },
+            { name: 'Dual Ichor', requirements: 'Mutagen Mass (5), Plastids (900), Argon Crystal (2)', source: 'Bio Lab (Dojo)' },
+            { name: 'Dual Kamas', requirements: 'Morphics (3), Plastids (600), Salvage (900)', source: 'Market' },
+            { name: 'Dual Keres', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Dual Raza', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Dual Skana', requirements: 'Skana (2), Credits (20000)', source: 'Build 2x Skana' },
+            { name: 'Dual Zoren', requirements: 'Morphics (3), Plastids (600), Polymer Bundle (900)', source: 'Market' },
+            { name: 'Endura', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Ether Daggers', requirements: 'Morphics (2), Plastids (450), Salvage (600)', source: 'Market' },
+            { name: 'Ether Reaper', requirements: 'Morphics (3), Plastids (900), Polymer Bundle (1200)', source: 'Market' },
+            { name: 'Ether Sword', requirements: 'Morphics (2), Plastids (450), Salvage (600)', source: 'Market' },
+            { name: 'Falcor', requirements: 'Fieldron (5), Oxium (250), Argon Crystal (2)', source: 'Energy Lab (Dojo)' },
+            { name: 'Fang', requirements: 'Morphics (2), Ferrite (600), Salvage (450)', source: 'Market' },
+            { name: 'Fragor', requirements: 'Alloy Plate (1200), Gallium (5), Salvage (1500)', source: 'Market' },
+            { name: 'Furax', requirements: 'Alloy Plate (900), Ferrite (600), Salvage (300)', source: 'Market' },
+            { name: 'Galatine', requirements: 'Alloy Plate (600), Morphics (5), Salvage (1000)', source: 'Market' },
+            { name: 'Glaive', requirements: 'Morphics (3), Plastids (600), Polymer Bundle (900)', source: 'Market' },
+            { name: 'Gram', requirements: 'Alloy Plate (600), Gallium (4), Salvage (900)', source: 'Market' },
+            { name: 'Guandao', requirements: 'Fieldron (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Gunsen', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Halikar', requirements: 'Alloy Plate (900), Ferrite (600), Salvage (450)', source: 'Market' },
+            { name: 'Hate', requirements: 'Neurodes (2), Plastids (1200), Rubedo (900)', source: 'Stalker drop' },
+            { name: 'Heat Dagger', requirements: 'Morphics (2), Ferrite (450), Salvage (300)', source: 'Market' },
+            { name: 'Heat Sword', requirements: 'Morphics (2), Ferrite (600), Salvage (450)', source: 'Market' },
+            { name: 'Heliocor', requirements: 'Fieldron (10), Cryotic (1200), Argon Crystal (2)', source: 'Simaris' },
+            { name: 'Hirudo', requirements: 'Mutagen Mass (5), Cryotic (900), Argon Crystal (2)', source: 'Bio Lab (Dojo)' },
+            { name: 'Jat Kittag', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Chem Lab (Dojo)' },
+            { name: 'Jat Kusar', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Chem Lab (Dojo)' },
+            { name: 'Jaw Sword', requirements: 'Morphics (2), Ferrite (600), Salvage (450)', source: 'Market' },
+            { name: 'Kama', requirements: 'Morphics (2), Plastids (450), Salvage (600)', source: 'Market' },
+            { name: 'Karyst', requirements: 'Mutagen Mass (5), Plastids (600), Salvage (900)', source: 'Bio Lab (Dojo)' },
+            { name: 'Kesheg', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Kestrel', requirements: 'Alloy Plate (900), Plastids (600), Polymer Bundle (900)', source: 'Market' },
+            { name: 'Kogake', requirements: 'Alloy Plate (900), Ferrite (600), Salvage (300)', source: 'Market' },
+            { name: 'Kronen', requirements: 'Detonite Injector (2), Cryotic (600), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Lacera', requirements: 'Mutagen Mass (5), Plastids (900), Argon Crystal (2)', source: 'Bio Lab (Dojo)' },
+            { name: 'Lecta', requirements: 'Fieldron (5), Plastids (900), Polymer Bundle (1200)', source: 'Market' },
+            { name: 'Lesion', requirements: 'Mutagen Mass (5), Plastids (900), Argon Crystal (2)', source: 'Bio Lab (Dojo)' },
+            { name: 'Machete', requirements: 'Morphics (2), Ferrite (600), Salvage (450)', source: 'Market' },
+            { name: 'Magistar', requirements: 'Alloy Plate (1200), Gallium (5), Salvage (1500)', source: 'Market' },
+            { name: 'Masseter', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Mios', requirements: 'Mutagen Mass (5), Plastids (900), Argon Crystal (2)', source: 'Bio Lab (Dojo)' },
+            { name: 'Mire', requirements: 'Mutagen Mass (5), Plastids (600), Salvage (900)', source: 'Bio Lab (Dojo)' },
+            { name: 'Nami Skyla', requirements: 'Morphics (3), Plastids (600), Salvage (900)', source: 'Market' },
+            { name: 'Nami Solo', requirements: 'Morphics (2), Plastids (450), Salvage (600)', source: 'Market' },
+            { name: 'Nepheri', requirements: 'Detonite Injector (5), Oxium (250), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Nikana', requirements: 'Morphics (10), Plastids (5500), Argon Crystal (2)', source: 'Market' },
+            { name: 'Ninkondi', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Obex', requirements: 'Alloy Plate (900), Ferrite (600), Salvage (300)', source: 'Market' },
+            { name: 'Ohma', requirements: 'Fieldron (5), Oxium (250), Argon Crystal (2)', source: 'Energy Lab (Dojo)' },
+            { name: 'Okina', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Orthos', requirements: 'Morphics (1), Plastids (900), Polymer Bundle (900)', source: 'Market' },
+            { name: 'Orvius', requirements: 'Fieldron (5), Oxium (250), Argon Crystal (2)', source: 'Energy Lab (Dojo)' },
+            { name: 'Pangolin Sword', requirements: 'Morphics (2), Ferrite (600), Salvage (450)', source: 'Market' },
+            { name: 'Paracesis', requirements: 'Quest components', source: 'The Sacrifice' },
+            { name: 'Plasma Sword', requirements: 'Morphics (2), Ferrite (600), Salvage (450)', source: 'Market' },
+            { name: 'Prova', requirements: 'Fieldron (5), Ferrite (600), Salvage (450)', source: 'Market' },
+            { name: 'Redeemer', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Ripkas', requirements: 'Fieldron (5), Cryotic (900), Argon Crystal (2)', source: 'Energy Lab (Dojo)' },
+            { name: 'Scindo', requirements: 'Alloy Plate (1200), Gallium (5), Salvage (1500)', source: 'Market' },
+            { name: 'Serro', requirements: 'Fieldron (5), Cryotic (900), Argon Crystal (2)', source: 'Energy Lab (Dojo)' },
+            { name: 'Shaku', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Sheev', requirements: 'Detonite Injector (5), Cryotic (600), Salvage (900)', source: 'Market' },
+            { name: 'Sibear', requirements: 'Fieldron (5), Cryotic (30000), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Sigma & Octantis', requirements: 'Alloy Plate (900), Cryotic (900), Argon Crystal (2)', source: 'Market' },
+            { name: 'Silva & Aegis', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Skana', requirements: 'Starter weapon', source: 'Starting weapon' },
+            { name: 'Skiajati', requirements: 'Quest reward', source: 'The Sacrifice' },
+            { name: 'Stropha', requirements: 'Detonite Injector (10), Hexenon (1500), Argon Crystal (3)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Sydon', requirements: 'Alloy Plate (900), Gallium (3), Salvage (1200)', source: 'Market' },
+            { name: 'Tatsu', requirements: 'Fieldron (10), Hexenon (1200), Argon Crystal (2)', source: 'Market' },
+            { name: 'Tekko', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Tipedo', requirements: 'Morphics (3), Plastids (900), Polymer Bundle (1200)', source: 'Market' },
+            { name: 'Tonbo', requirements: 'Morphics (3), Plastids (900), Polymer Bundle (1200)', source: 'Market' },
+            { name: 'Twin Basolk', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Twin Krohkur', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Venka', requirements: 'Detonite Injector (5), Cryotic (900), Argon Crystal (2)', source: 'Tenno Lab (Dojo)' },
+            { name: 'Vitrica', requirements: 'Glassmaker parts', source: 'Nightwave' },
+            { name: 'Volnus', requirements: 'Alloy Plate (900), Cryotic (900), Argon Crystal (2)', source: 'Market' },
+            { name: 'War', requirements: 'Broken War (1), War Blade (2), War Handle (1)', source: 'Stalker Shadow' },
+            { name: 'Wolf Sledge', requirements: 'Wolf of Saturn Six parts', source: 'Nightwave' },
+            { name: 'Xoris', requirements: 'Quest reward', source: 'Deadlock Protocol' },
+            { name: 'Zaw', requirements: 'Cetus modular melee', source: 'Cetus (Hok)' }
+        ],
+        archwing: [
+            { name: 'Elytron', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Neural Sensors (1), Circuits (300), Polymer Bundle (120)' },
+                { name: 'Harness', materials: 'Morphics (2), Rubedo (50), Salvage (150)' },
+                { name: 'Systems', materials: 'Control Module (1), Plastids (220), Ferrite (50)' },
+                { name: 'Wings', materials: 'Oxium (100), Plastids (350), Rubedo (500)' }
+            ]},
+            { name: 'Itzal', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Neural Sensors (1), Circuits (300), Polymer Bundle (120)' },
+                { name: 'Harness', materials: 'Morphics (2), Rubedo (50), Salvage (150)' },
+                { name: 'Systems', materials: 'Control Module (1), Plastids (220), Ferrite (50)' },
+                { name: 'Wings', materials: 'Oxium (200), Plastids (400), Rubedo (600)' }
+            ]},
+            { name: 'Odonata', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Neural Sensors (1), Circuits (300), Polymer Bundle (120)' },
+                { name: 'Harness', materials: 'Morphics (2), Rubedo (50), Salvage (150)' },
+                { name: 'Systems', materials: 'Control Module (1), Plastids (220), Ferrite (50)' },
+                { name: 'Wings', materials: 'Oxium (50), Plastids (300), Rubedo (400)' }
+            ]},
+            { name: 'Amesha', expandable: true, components: [
+                { name: 'Neuroptics', materials: 'Neural Sensors (1), Circuits (300), Polymer Bundle (120)' },
+                { name: 'Harness', materials: 'Morphics (2), Rubedo (50), Salvage (150)' },
+                { name: 'Systems', materials: 'Control Module (1), Plastids (220), Ferrite (50)' },
+                { name: 'Wings', materials: 'Oxium (300), Plastids (500), Rubedo (800)' }
+            ]}
+        ],
+        archgun: [
+            { name: 'Corvas', expandable: true, components: [
+                { name: 'Barrel', materials: 'Morphics (5), Rubedo (1000), Salvage (4500)' },
+                { name: 'Receiver', materials: 'Neural Sensors (2), Alloy Plate (6000), Circuits (1200)' },
+                { name: 'Stock', materials: 'Plastids (800), Ferrite (6000), Polymer Bundle (2250)' }
+            ]},
+            { name: 'Fluctus', expandable: true, components: [
+                { name: 'Barrel', materials: 'Morphics (5), Rubedo (1000), Salvage (4500)' },
+                { name: 'Receiver', materials: 'Neural Sensors (2), Alloy Plate (6000), Circuits (1200)' },
+                { name: 'Stock', materials: 'Plastids (800), Ferrite (6000), Polymer Bundle (2250)' }
+            ]},
+            { name: 'Grattler', expandable: true, components: [
+                { name: 'Barrel', materials: 'Morphics (5), Rubedo (1000), Salvage (4500)' },
+                { name: 'Receiver', materials: 'Neural Sensors (2), Alloy Plate (6000), Circuits (1200)' },
+                { name: 'Stock', materials: 'Plastids (800), Ferrite (6000), Polymer Bundle (2250)' }
+            ]},
+            { name: 'Imperator', expandable: true, components: [
+                { name: 'Barrel', materials: 'Morphics (5), Rubedo (1000), Salvage (4500)' },
+                { name: 'Receiver', materials: 'Neural Sensors (2), Alloy Plate (6000), Circuits (1200)' },
+                { name: 'Stock', materials: 'Plastids (800), Ferrite (6000), Polymer Bundle (2250)' }
+            ]},
+            { name: 'Velocitus', expandable: true, components: [
+                { name: 'Barrel', materials: 'Morphics (5), Rubedo (1000), Salvage (4500)' },
+                { name: 'Receiver', materials: 'Neural Sensors (2), Alloy Plate (6000), Circuits (1200)' },
+                { name: 'Stock', materials: 'Plastids (800), Ferrite (6000), Polymer Bundle (2250)' }
+            ]},
+            { name: 'Morgha', expandable: true, components: [
+                { name: 'Barrel', materials: 'Morphics (5), Rubedo (1000), Salvage (4500)' },
+                { name: 'Receiver', materials: 'Neural Sensors (2), Alloy Plate (6000), Circuits (1200)' },
+                { name: 'Stock', materials: 'Plastids (800), Ferrite (6000), Polymer Bundle (2250)' }
+            ]},
+            { name: 'Larkspur', expandable: true, components: [
+                { name: 'Barrel', materials: 'Morphics (5), Rubedo (1000), Salvage (4500)' },
+                { name: 'Receiver', materials: 'Neural Sensors (2), Alloy Plate (6000), Circuits (1200)' },
+                { name: 'Stock', materials: 'Plastids (800), Ferrite (6000), Polymer Bundle (2250)' }
+            ]},
+            { name: 'Mausolon', expandable: true, components: [
+                { name: 'Barrel', materials: 'Morphics (5), Rubedo (1000), Salvage (4500)' },
+                { name: 'Receiver', materials: 'Neural Sensors (2), Alloy Plate (6000), Circuits (1200)' },
+                { name: 'Stock', materials: 'Plastids (800), Ferrite (6000), Polymer Bundle (2250)' }
+            ]}
+        ],
+        archmelee: [
+            { name: 'Veritux', expandable: true, components: [
+                { name: 'Blade', materials: 'Morphics (3), Alloy Plate (2400), Salvage (1800)' },
+                { name: 'Handle', materials: 'Ferrite (3000), Polymer Bundle (900), Rubedo (600)' }
+            ]},
+            { name: 'Kaszas', expandable: true, components: [
+                { name: 'Blade', materials: 'Morphics (5), Alloy Plate (4000), Salvage (3000)' },
+                { name: 'Handle', materials: 'Ferrite (5000), Polymer Bundle (1500), Rubedo (1000)' }
+            ]},
+            { name: 'Centaur', expandable: true, components: [
+                { name: 'Blade', materials: 'Morphics (4), Alloy Plate (3200), Salvage (2400)' },
+                { name: 'Handle', materials: 'Ferrite (4000), Polymer Bundle (1200), Rubedo (800)' }
+            ]},
+            { name: 'Agkuza', expandable: true, components: [
+                { name: 'Blade', materials: 'Morphics (4), Alloy Plate (3200), Salvage (2400)' },
+                { name: 'Handle', materials: 'Ferrite (4000), Polymer Bundle (1200), Rubedo (800)' }
+            ]},
+            { name: 'Knux', expandable: true, components: [
+                { name: 'Blade', materials: 'Morphics (4), Alloy Plate (3200), Salvage (2400)' },
+                { name: 'Handle', materials: 'Ferrite (4000), Polymer Bundle (1200), Rubedo (800)' }
+            ]}
+        ],
+        companions: [
+            { name: 'Carrier', expandable: true, components: [
+                { name: 'Carapace', materials: 'Alloy Plate (600), Circuits (400), Polymer Bundle (200)' },
+                { name: 'Cerebrum', materials: 'Neural Sensors (1), Salvage (500), Plastids (150)' },
+                { name: 'Systems', materials: 'Control Module (1), Morphics (2), Rubedo (500)' }
+            ]},
+            { name: 'Helios', expandable: true, components: [
+                { name: 'Carapace', materials: 'Alloy Plate (600), Circuits (400), Polymer Bundle (200)' },
+                { name: 'Cerebrum', materials: 'Neural Sensors (1), Salvage (500), Plastids (150)' },
+                { name: 'Systems', materials: 'Control Module (1), Morphics (2), Rubedo (500)' }
+            ]},
+            { name: 'Djinn', expandable: true, components: [
+                { name: 'Carapace', materials: 'Alloy Plate (600), Circuits (400), Polymer Bundle (200)' },
+                { name: 'Cerebrum', materials: 'Neural Sensors (1), Salvage (500), Plastids (150)' },
+                { name: 'Systems', materials: 'Control Module (1), Morphics (2), Rubedo (500)' }
+            ]},
+            { name: 'Sahasa Kubrow', requirements: 'Kubrow Egg (1), Incubator Core (1)', source: 'Kubrow Dens (Earth)' },
+            { name: 'Huras Kubrow', requirements: 'Kubrow Egg (1), Incubator Core (1)', source: 'Kubrow Dens (Earth)' },
+            { name: 'Adarza Kavat', requirements: 'Kavat Genetic Code (10), Incubator Core (1)', source: 'Feral Kavats' },
+            { name: 'Smeeta Kavat', requirements: 'Kavat Genetic Code (10), Incubator Core (1)', source: 'Feral Kavats' }
+        ],
+        resources: [
+            { name: 'Alloy Plate', type: 'Common Resource', location: 'Venus, Jupiter, Sedna, Ceres, Phobos, Pluto' },
+            { name: 'Circuits', type: 'Common Resource', location: 'Venus, Ceres, Kuva Fortress' },
+            { name: 'Ferrite', type: 'Common Resource', location: 'Mercury, Earth, Neptune, Void' },
+            { name: 'Nano Spores', type: 'Common Resource', location: 'Deimos, Eris, Neptune, Saturn' },
+            { name: 'Plastids', type: 'Common Resource', location: 'Saturn, Uranus, Phobos, Eris, Pluto' },
+            { name: 'Polymer Bundle', type: 'Common Resource', location: 'Mercury, Venus, Uranus' },
+            { name: 'Rubedo', type: 'Common Resource', location: 'Earth, Pluto, Europa, Sedna, Phobos, Void' },
+            { name: 'Salvage', type: 'Common Resource', location: 'Mars, Jupiter, Sedna' },
+            { name: 'Control Module', type: 'Uncommon Resource', location: 'Void, Neptune, Europa' },
+            { name: 'Gallium', type: 'Uncommon Resource', location: 'Mars, Uranus' },
+            { name: 'Morphics', type: 'Uncommon Resource', location: 'Mercury, Mars, Europa, Pluto' },
+            { name: 'Neural Sensors', type: 'Uncommon Resource', location: 'Jupiter, Kuva Fortress' },
+            { name: 'Neurodes', type: 'Uncommon Resource', location: 'Earth Derelict, Eris, Deimos, Lua' },
+            { name: 'Orokin Cell', type: 'Uncommon Resource', location: 'Saturn, Ceres, Derelict (Boss drops)' },
+            { name: 'Argon Crystal', type: 'Rare Resource (Decays)', location: 'Void missions only - Decays after 48h' },
+            { name: 'Cryotic', type: 'Special Resource', location: 'Excavation missions (any planet)' },
+            { name: 'Oxium', type: 'Special Resource', location: 'Kill Oxium Ospreys - IO Jupiter recommended' },
+            { name: 'Tellurium', type: 'Rare Resource', location: 'Uranus Archwing/Submersible - Ophelia' },
+            { name: 'Hexenon', type: 'Special Resource', location: 'Jupiter missions, Ropalolyst boss' },
+            { name: 'Fieldron', type: 'Research Component', location: 'Invasions or craft in Energy Lab' },
+            { name: 'Detonite Injector', type: 'Research Component', location: 'Invasions or craft in Chem Lab' },
+            { name: 'Mutagen Mass', type: 'Research Component', location: 'Invasions or craft in Bio Lab' },
+            { name: 'Forma', type: 'Crafted Item', location: 'Void Relics, Lua Thrax, Syndicate' },
+            { name: 'Kuva', type: 'Special Resource', location: 'Kuva Siphon/Flood, Kuva Fortress' },
+            { name: 'Endo', type: 'Mod Currency', location: 'Excavation Hieracon-Pluto, Arbitrations' }
+        ],
+        relics: [
+            { name: 'Lith Relics', type: 'Common Tier - Easiest to Farm', location: 'Hepit (Void Capture) - 1min runs, Ukko (Void Capture), Defense waves 5-10, Survival 5-10min' },
+            { name: 'Meso Relics', type: 'Uncommon Tier', location: 'Io (Jupiter Defense) - Best farm, Ukko (Void Capture), Defense waves 10-15, Survival 10-15min' },
+            { name: 'Neo Relics', type: 'Rare Tier', location: 'Mithra (Void Survival) - Stay 15-20min, Ukko (Void Capture), Defense waves 15-20, Hydron (Sedna Defense)' },
+            { name: 'Axi Relics', type: 'Rarest Tier', location: 'Apollo (Lua Disruption) - Best farm, Mithra (Void Survival) 20min+, Xini (Eris Interception), Marduk (Void Sabotage)' },
+            { name: 'Lith Fissures', type: 'Crack Open Lith Relics', location: 'Any Lith Fissure mission - Check Navigation for active fissures' },
+            { name: 'Meso Fissures', type: 'Crack Open Meso Relics', location: 'Any Meso Fissure mission - Check Navigation for active fissures' },
+            { name: 'Neo Fissures', type: 'Crack Open Neo Relics', location: 'Any Neo Fissure mission - Check Navigation for active fissures' },
+            { name: 'Axi Fissures', type: 'Crack Open Axi Relics', location: 'Any Axi Fissure mission - Check Navigation for active fissures' },
+            { name: 'Radiant Relics', type: 'Refinement Guide', location: 'Use 10 Void Traces at Void Relic Refinement Station to make Radiant (best drop rates)' },
+            { name: 'Void Traces', type: 'Relic Refinement Resource', location: 'Earned by completing Void Fissure missions (6-30 per mission)' },
+            { name: 'Hepit Speed Farm', type: 'Fastest Lith Farm', location: 'Hepit (Void Capture) - 1-2 minute runs, guaranteed Lith relic' },
+            { name: 'Io Defense', type: 'Best Meso Farm', location: 'Io (Jupiter Defense) - Waves 5-10, great for Meso relics and Oxium' },
+            { name: 'Apollo Disruption', type: 'Best Axi Farm', location: 'Apollo (Lua Disruption) - 4 conduits = guaranteed Axi, fast and efficient' },
+            { name: 'Ukko Capture', type: 'All-Around Speed Farm', location: 'Ukko (Void Capture) - Drops Lith/Meso/Neo, very fast runs' }
+        ]
+    };
+    
+    function initTabs() {
+        const tabsEl = document.getElementById('tabs');
+        tabsEl.innerHTML = Object.entries(categories).map(([key, label]) => 
+            `<button class="tab ${key === currentTab ? 'active' : ''}" onclick="switchTab('${key}')">${label}</button>`
+        ).join('');
+    }
+    
+    function switchTab(tab) {
+        currentTab = tab;
+        initTabs();
+        render();
+    }
+    
+    function toggleItem(category, itemName) {
+        if (!state[category]) state[category] = {};
+        const currentState = state[category][itemName];
+        if (!currentState || typeof currentState !== 'object') {
+            state[category][itemName] = { _built: true, _mastered: false, _subsumed: false };
+        } else {
+            state[category][itemName]._built = !state[category][itemName]._built;
+        }
+        saveState();
+        renderWithoutCollapse();
+    }
+    
+    function toggleMastered(category, itemName) {
+        if (!state[category]) state[category] = {};
+        if (!state[category][itemName] || typeof state[category][itemName] !== 'object') {
+            state[category][itemName] = { _built: false, _mastered: true, _subsumed: false };
+        } else {
+            state[category][itemName]._mastered = !state[category][itemName]._mastered;
+        }
+        saveState();
+        renderWithoutCollapse();
+    }
+    
+    function toggleSubsumed(category, itemName) {
+        if (!state[category]) state[category] = {};
+        if (!state[category][itemName] || typeof state[category][itemName] !== 'object') {
+            state[category][itemName] = { _built: false, _mastered: false, _subsumed: true };
+        } else {
+            state[category][itemName]._subsumed = !state[category][itemName]._subsumed;
+        }
+        saveState();
+        renderWithoutCollapse();
+    }
+    
+    function toggleComponent(category, itemName, componentName) {
+        if (!state[category]) state[category] = {};
+        if (!state[category][itemName]) state[category][itemName] = { _built: false };
+        if (typeof state[category][itemName] !== 'object') {
+            state[category][itemName] = { _built: false };
+        }
+        const compState = state[category][itemName][componentName];
+        state[category][itemName][componentName] = !compState;
+        saveState();
+        renderWithoutCollapse();
+    }
+    
+    function toggleExpand(itemName) {
+        const el = document.getElementById(`details-${itemName}`);
+        const icon = document.getElementById(`icon-${itemName}`);
+        if (el && icon) {
+            el.classList.toggle('expanded');
+            icon.classList.toggle('expanded');
+        }
+    }
+    
+    function renderWithoutCollapse() {
+        const expandedItems = [];
+        document.querySelectorAll('.item-details.expanded').forEach(el => {
+            expandedItems.push(el.id.replace('details-', ''));
+        });
+        render();
+        expandedItems.forEach(itemName => {
+            const el = document.getElementById(`details-${itemName}`);
+            const icon = document.getElementById(`icon-${itemName}`);
+            if (el && icon) {
+                el.classList.add('expanded');
+                icon.classList.add('expanded');
+            }
+        });
+    }
+    
+    function render() {
+        if (currentTab === 'resources' || currentTab === 'relics') {
+            renderResources();
+            return;
+        }
+        
+        const items = data[currentTab];
+        if (!items || items.length === 0) {
+            document.getElementById('itemList').innerHTML = '<div class="no-results">No items in this category yet</div>';
+            document.getElementById('progressBar').style.display = 'none';
+            return;
+        }
+        
+        const filtered = items.filter(item => 
+            item.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        const listEl = document.getElementById('itemList');
+        document.getElementById('progressBar').style.display = 'block';
+        
+        if (filtered.length === 0) {
+            listEl.innerHTML = '<div class="no-results">No items found</div>';
+            updateProgress(0, 0);
+            return;
+        }
+        
+        let completed = 0;
+        
+        listEl.innerHTML = filtered.map(item => {
+            const isCompleted = isItemCompleted(currentTab, item);
+            if (isCompleted) completed++;
+            
+            if (item.expandable) {
+                const allComponents = item.components.map(c => c.name);
+                const completedComponents = allComponents.filter(c => 
+                    state[currentTab]?.[item.name]?.[c]
+                );
+                
+                const itemState = state[currentTab]?.[item.name];
+                const isBuilt = itemState?._built === true;
+                const isMastered = itemState?._mastered === true;
+                const isSubsumed = itemState?._subsumed === true;
+                
+                return `
+                    <div class="item-card ${isCompleted ? 'completed' : ''}">
+                        <div class="item-header" onclick="toggleExpand('${item.name}')">
+                            <div style="display: flex; flex-direction: column; align-items: center; margin-right: 12px;">
+                                <div class="checkbox ${isBuilt ? 'checked' : ''}" onclick="event.stopPropagation(); toggleItem('${currentTab}', '${item.name}')" style="margin-right: 0; margin-bottom: 4px;">
+                                    ${isBuilt ? '✓' : ''}
+                                </div>
+                                <div class="checkbox-label">Built</div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; align-items: center; margin-right: 12px;">
+                                <div class="checkbox ${isMastered ? 'mastered' : ''}" onclick="event.stopPropagation(); toggleMastered('${currentTab}', '${item.name}')" style="margin-right: 0; margin-bottom: 4px;">
+                                    ${isMastered ? '★' : ''}
+                                </div>
+                                <div class="checkbox-label">Master</div>
+                            </div>
+                            ${currentTab === 'warframes' || currentTab === 'primeframes' ? `
+                            <div style="display: flex; flex-direction: column; align-items: center; margin-right: 12px;">
+                                <div class="checkbox ${isSubsumed ? 'subsumed' : ''}" onclick="event.stopPropagation(); toggleSubsumed('${currentTab}', '${item.name}')" style="margin-right: 0; margin-bottom: 4px;">
+                                    ${isSubsumed ? '◆' : ''}
+                                </div>
+                                <div class="checkbox-label">Subsume</div>
+                            </div>
+                            ` : ''}
+                            <div class="item-name">${item.name}</div>
+                            <span style="font-size: 12px; color: #94a3b8; margin-right: 8px;">${completedComponents.length}/${allComponents.length}</span>
+                            <span class="expand-icon" id="icon-${item.name}">▼</span>
+                        </div>
+                        <div class="item-details" id="details-${item.name}">
+                            <div class="component-list">
+                                ${item.components.map(comp => `
+                                    <div class="component-item">
+                                        <div class="component-checkbox ${state[currentTab]?.[item.name]?.[comp.name] ? 'checked' : ''}" 
+                                             onclick="toggleComponent('${currentTab}', '${item.name}', '${comp.name}')">
+                                            ${state[currentTab]?.[item.name]?.[comp.name] ? '✓' : ''}
+                                        </div>
+                                        <div class="component-info">
+                                            <div class="component-name">${comp.name}</div>
+                                            <div class="component-materials">${comp.materials}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const itemState = state[currentTab]?.[item.name];
+                const isBuilt = itemState?._built === true;
+                const isMastered = itemState?._mastered === true;
+                
+                return `
+                    <div class="simple-item ${isCompleted ? 'completed' : ''}">
+                        <div class="simple-item-header">
+                            <div style="display: flex; flex-direction: column; align-items: center; margin-right: 12px;">
+                                <div class="checkbox ${isBuilt ? 'checked' : ''}" onclick="toggleItem('${currentTab}', '${item.name}')" style="margin-right: 0; margin-bottom: 4px;">
+                                    ${isBuilt ? '✓' : ''}
+                                </div>
+                                <div class="checkbox-label">Built</div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; align-items: center; margin-right: 12px;">
+                                <div class="checkbox ${isMastered ? 'mastered' : ''}" onclick="toggleMastered('${currentTab}', '${item.name}')" style="margin-right: 0; margin-bottom: 4px;">
+                                    ${isMastered ? '★' : ''}
+                                </div>
+                                <div class="checkbox-label">Master</div>
+                            </div>
+                            <div class="item-name">${item.name}</div>
+                        </div>
+                        <div class="simple-requirements">${item.requirements}</div>
+                        ${item.source ? `<div class="simple-source">📍 ${item.source}</div>` : ''}
+                    </div>
+                `;
+            }
+        }).join('');
+        
+        updateProgress(completed, filtered.length);
+    }
+    
+    function renderResources() {
+        const listEl = document.getElementById('itemList');
+        document.getElementById('progressBar').style.display = 'none';
+        
+        const resourceData = currentTab === 'relics' ? data.relics : data.resources;
+        const filtered = resourceData.filter(r => 
+            r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            r.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            r.location.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        
+        if (filtered.length === 0) {
+            listEl.innerHTML = '<div class="no-results">No items found</div>';
+            return;
+        }
+        
+        listEl.innerHTML = filtered.map(resource => `
+            <div class="resource-card">
+                <div class="resource-name">${resource.name}</div>
+                <div class="resource-type">${resource.type}</div>
+                <div class="resource-location">📍 ${resource.location}</div>
+            </div>
+        `).join('');
+    }
+    
+    function isItemCompleted(category, item) {
+        if (!item) return false;
+        const itemState = state[category]?.[item.name];
+        if (!itemState || typeof itemState !== 'object') return false;
+        return itemState._mastered === true;
+    }
+    
+    function updateProgress(completed, total) {
+        document.getElementById('progressText').textContent = `${completed} / ${total}`;
+        const percent = total > 0 ? (completed / total) * 100 : 0;
+        document.getElementById('progressFill').style.width = percent + '%';
+    }
+    
+    function saveState() {
+        try {
+            localStorage.setItem('warframeState', JSON.stringify(state));
+        } catch (e) {
+            console.error('Failed to save state:', e);
+        }
+    }
+    
+    function loadState() {
+        try {
+            const saved = localStorage.getItem('warframeState');
+            if (saved) {
+                state = JSON.parse(saved);
+            }
+        } catch (e) {
+            console.error('Failed to load state:', e);
+        }
+    }
+    
+    function exportToCSV() {
+        try {
+            let csvContent = '';
+            
+            Object.entries(categories).forEach(([key, label]) => {
+                csvContent += `\n=== ${label.toUpperCase()} ===\n`;
+                
+                if (key === 'resources' || key === 'relics') {
+                    const resources = data[key] || [];
+                    csvContent += 'Resource Name,Type,Location\n';
+                    resources.forEach(r => {
+                        csvContent += `"${r.name}","${r.type}","${r.location}"\n`;
+                    });
+                    return;
+                }
+                
+                const items = data[key] || [];
+                if (items.length === 0) return;
+                
+                csvContent += 'Item Name,Built,Mastered,Subsumed,Build Requirements\n';
+                
+                items.forEach(item => {
+                    const itemState = state[key]?.[item.name];
+                    const isBuilt = itemState?._built === true ? 'Yes' : 'No';
+                    const isMastered = itemState?._mastered === true ? 'Yes' : 'No';
+                    const isSubsumed = itemState?._subsumed === true ? 'Yes' : 'No';
+                    
+                    if (item.expandable) {
+                        csvContent += `"${item.name}","${isBuilt}","${isMastered}","${isSubsumed}","See components below"\n`;
+                        item.components.forEach(comp => {
+                            const compCompleted = state[key]?.[item.name]?.[comp.name];
+                            const materials = comp.materials.replace(/"/g, '""');
+                            csvContent += `"  ${comp.name}","${compCompleted ? 'Yes' : 'No'}","","","${materials}"\n`;
+                        });
+                    } else {
+                        const requirements = (item.requirements || '').replace(/"/g, '""');
+                        const source = (item.source || '').replace(/"/g, '""');
+                        csvContent += `"${item.name}","${isBuilt}","${isMastered}","${isSubsumed}","${requirements} | Source: ${source}"\n`;
+                    }
+                });
+            });
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'Warframe_Checklist_' + new Date().toISOString().split('T')[0] + '.csv';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+            
+            alert('CSV file downloaded successfully!');
+        } catch (error) {
+            console.error('CSV export error:', error);
+            alert('CSV export failed: ' + error.message);
+        }
+    }
+    
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+        
+        if (fileExtension === 'csv') {
+            importCSV(file);
+        } else if (fileExtension === 'xlsx') {
+            importExcel(file);
+        } else {
+            alert('Please select a CSV or Excel file');
+        }
+        
+        event.target.value = '';
+    }
+    
+    function importCSV(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const content = e.target.result;
+                const lines = content.split('\n');
+                let currentCategory = null;
+                let currentItem = null;
+                const newState = {};
+                
+                for (let line of lines) {
+                    line = line.trim();
+                    if (!line) continue;
+                    
+                    if (line.startsWith('===')) {
+                        const categoryName = line.replace(/=/g, '').trim();
+                        currentCategory = Object.entries(categories).find(
+                            ([key, label]) => label.toUpperCase() === categoryName
+                        )?.[0];
+                        currentItem = null;
+                        continue;
+                    }
+                    
+                    if (line.includes('Item Name,Built') || line.includes('Resource Name,Type') || 
+                        currentCategory === 'resources' || currentCategory === 'relics') {
+                        continue;
+                    }
+                    
+                    if (!currentCategory) continue;
+                    
+                    const matches = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
+                    if (!matches || matches.length < 2) continue;
+                    
+                    const itemName = matches[0].replace(/^"|"$/g, '').trim();
+                    const isBuilt = matches[1].replace(/^"|"$/g, '').trim().toLowerCase() === 'yes';
+                    const isMastered = matches[2] ? matches[2].replace(/^"|"$/g, '').trim().toLowerCase() === 'yes' : false;
+                    const isSubsumed = matches[3] ? matches[3].replace(/^"|"$/g, '').trim().toLowerCase() === 'yes' : false;
+                    
+                    if (itemName.startsWith('  ')) {
+                        const componentName = itemName.trim();
+                        if (currentItem && newState[currentCategory]?.[currentItem]) {
+                            newState[currentCategory][currentItem][componentName] = isBuilt;
+                        }
+                    } else {
+                        currentItem = itemName;
+                        if (!newState[currentCategory]) {
+                            newState[currentCategory] = {};
+                        }
+                        newState[currentCategory][itemName] = {
+                            _built: isBuilt,
+                            _mastered: isMastered,
+                            _subsumed: isSubsumed
+                        };
+                    }
+                }
+                
+                Object.keys(newState).forEach(category => {
+                    if (!state[category]) state[category] = {};
+                    Object.assign(state[category], newState[category]);
+                });
+                
+                saveState();
+                render();
+                alert('CSV imported successfully!');
+            } catch (error) {
+                console.error('Import error:', error);
+                alert('Failed to import CSV: ' + error.message);
+            }
+        };
+        reader.readAsText(file);
+    }
+    
+    function importExcel(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const newState = {};
+                
+                workbook.SheetNames.forEach(sheetName => {
+                    const categoryKey = Object.entries(categories).find(
+                        ([key, label]) => label === sheetName
+                    )?.[0];
+                    
+                    if (!categoryKey || categoryKey === 'resources' || categoryKey === 'relics') return;
+                    
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    let currentItem = null;
+                    
+                    for (let i = 1; i < jsonData.length; i++) {
+                        const row = jsonData[i];
+                        if (!row || row.length < 2) continue;
+                        
+                        const itemName = row[0];
+                        const isBuilt = row[1] === '✓' || row[1] === 'Yes';
+                        const isMastered = row[2] === '✓' || row[2] === 'Yes';
+                        const isSubsumed = row[3] === '✓' || row[3] === 'Yes';
+                        
+                        if (typeof itemName !== 'string') continue;
+                        
+                        if (itemName.startsWith('  ')) {
+                            const componentName = itemName.trim();
+                            if (currentItem && newState[categoryKey]?.[currentItem]) {
+                                newState[categoryKey][currentItem][componentName] = isBuilt;
+                            }
+                        } else {
+                            currentItem = itemName;
+                            if (!newState[categoryKey]) {
+                                newState[categoryKey] = {};
+                            }
+                            newState[categoryKey][itemName] = {
+                                _built: isBuilt,
+                                _mastered: isMastered,
+                                _subsumed: isSubsumed
+                            };
+                        }
+                    }
+                });
+                
+                Object.keys(newState).forEach(category => {
+                    if (!state[category]) state[category] = {};
+                    Object.assign(state[category], newState[category]);
+                });
+                
+                saveState();
+                render();
+                alert('Excel file imported successfully!');
+            } catch (error) {
+                console.error('Import error:', error);
+                alert('Failed to import Excel file: ' + error.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+    
+    function exportToExcel() {
+        try {
+            const wb = XLSX.utils.book_new();
+            
+            Object.entries(categories).forEach(([key, label]) => {
+                if (key === 'resources' || key === 'relics') {
+                    const resources = data[key] || [];
+                    const rows = [['Resource Name', 'Type', 'Location']];
+                    resources.forEach(r => {
+                        rows.push([r.name, r.type, r.location]);
+                    });
+                    const ws = XLSX.utils.aoa_to_sheet(rows);
+                    ws['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 60 }];
+                    XLSX.utils.book_append_sheet(wb, ws, label);
+                    return;
+                }
+                
+                const items = data[key] || [];
+                if (items.length === 0) return;
+                
+                const rows = [['Item Name', 'Built', 'Mastered', 'Subsumed', 'Build Requirements']];
+                
+                items.forEach(item => {
+                    const itemState = state[key]?.[item.name];
+                    const isBuilt = itemState?._built === true ? '✓' : '';
+                    const isMastered = itemState?._mastered === true ? '✓' : '';
+                    const isSubsumed = itemState?._subsumed === true ? '✓' : '';
+                    
+                    if (item.expandable) {
+                        rows.push([item.name, isBuilt, isMastered, isSubsumed, 'See components below']);
+                        item.components.forEach(comp => {
+                            const compCompleted = state[key]?.[item.name]?.[comp.name];
+                            rows.push([`  ${comp.name}`, compCompleted ? '✓' : '', '', '', comp.materials]);
+                        });
+                    } else {
+                        rows.push([item.name, isBuilt, isMastered, isSubsumed, item.requirements || '']);
+                    }
+                });
+                
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                ws['!cols'] = [{ wch: 25 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 60 }];
+                XLSX.utils.book_append_sheet(wb, ws, label);
+            });
+            
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'Warframe_Checklist_' + new Date().toISOString().split('T')[0] + '.xlsx';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+            
+            alert('Excel file downloaded successfully!');
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Export failed: ' + error.message);
+        }
+    }
+    
+    document.getElementById('searchBox').addEventListener('input', (e) => {
+        searchTerm = e.target.value;
+        render();
+    });
+    
+    loadState();
+    initTabs();
+    render();
+</script>
+```
+
+</body>
+</html>
