@@ -1497,7 +1497,9 @@
         const filtered = items.filter(item => 
             item.name.toLowerCase().includes(searchTerm.toLowerCase())
         );
-        
+        // Sort alphabetically by name
+const sorted = filtered.sort((a, b) => a.name.localeCompare(b.name));
+
         const listEl = document.getElementById('itemList');
         document.getElementById('progressBar').style.display = 'block';
         
@@ -1509,7 +1511,7 @@
         
         let completed = 0;
         
-        listEl.innerHTML = filtered.map(item => {
+        listEl.innerHTML = sorted.map(item => {
             const isCompleted = isItemCompleted(currentTab, item);
             if (isCompleted) completed++;
             
