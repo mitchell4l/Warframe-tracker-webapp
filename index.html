@@ -315,6 +315,8 @@ Support
 <div class="item-list" id="itemList"></div>
 
 <script>
+    const STATE_VERSION = 1;
+
     let currentTab = 'warframes';
     let searchTerm = '';
     let state = {};
@@ -1798,24 +1800,55 @@ const sorted = filtered.sort((a, b) => a.name.localeCompare(b.name));
     }
     
     function saveState() {
-        try {
-            localStorage.setItem('warframeState', JSON.stringify(state));
-        } catch (e) {
-            console.error('Failed to save state:', e);
-        }
+  localStorage.setItem(
+    'warframeState',
+    JSON.stringify({ version: STATE_VERSION, data: state })
+  );
     }
     
     function loadState() {
-        try {
-            const saved = localStorage.getItem('warframeState');
-            if (saved) {
-                state = JSON.parse(saved);
-            }
-        } catch (e) {
-            console.error('Failed to load state:', e);
-        }
-    }
+  const saved = localStorage.getItem('warframeState');
+  if (!saved) return;
+
+  const parsed = JSON.parse(saved);
+  state = parsed.data || {};
+}
     
+    function getFlatState() {
+  const flat = {};
+
+  Object.entries(state).forEach(([category, items]) => {
+    if (typeof items !== 'object') return;
+
+    Object.entries(items).forEach(([itemName, itemData]) => {
+      if (typeof itemData !== 'object') return;
+
+      Object.entries(itemData).forEach(([key, value]) => {
+        flat[`${category}/${itemName}/${key}`] = value;
+      });
+    });
+  });
+
+  return flat;
+}
+
+function applyFlatState(flat) {
+  const newState = {};
+
+  Object.entries(flat).forEach(([path, value]) => {
+    const [category, itemName, key] = path.split('/');
+
+    if (!newState[category]) newState[category] = {};
+    if (!newState[category][itemName]) newState[category][itemName] = {};
+
+    newState[category][itemName][key] = value;
+  });
+
+  state = newState;
+  saveState();
+  render();
+}
+
     function exportToCSV() {
         try {
             let csvContent = '';
