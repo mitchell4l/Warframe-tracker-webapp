@@ -1981,9 +1981,29 @@ for (let i = 1; i < lines.length; i++) {
 }
                 
                 Object.keys(newState).forEach(category => {
-                    if (!state[category]) state[category] = {};
-                    Object.assign(state[category], newState[category]);
-                });
+    if (!state[category]) state[category] = {};
+
+    Object.keys(newState[category]).forEach(itemName => {
+        const importedItem = newState[category][itemName];
+        const existingItem = state[category][itemName] || {};
+
+        // Merge top-level flags (only upgrade, never downgrade)
+        state[category][itemName] = {
+            ...existingItem,
+            _built: existingItem._built || importedItem._built,
+            _mastered: existingItem._mastered || importedItem._mastered,
+            _subsumed: existingItem._subsumed || importedItem._subsumed
+        };
+
+        // Merge component checkboxes
+        Object.keys(importedItem).forEach(key => {
+            if (!key.startsWith('_')) {
+                state[category][itemName][key] =
+                    existingItem[key] || importedItem[key];
+            }
+        });
+    });
+});
                 
                 saveState();
                 render();
