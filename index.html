@@ -1850,63 +1850,78 @@ function applyFlatState(flat) {
 }
 
     function exportToCSV() {
-        try {
-            let csvContent = '';
-            
-            Object.entries(categories).forEach(([key, label]) => {
-                csvContent += `\n=== ${label.toUpperCase()} ===\n`;
-                
-                if (key === 'resources' || key === 'relics') {
-                    const resources = data[key] || [];
-                    csvContent += 'Resource Name,Type,Location\n';
-                    resources.forEach(r => {
-                        csvContent += `"${r.name}","${r.type}","${r.location}"\n`;
-                    });
-                    return;
-                }
-                
-                const items = data[key] || [];
-                if (items.length === 0) return;
-                
-                csvContent += 'Item Name,Built,Mastered,Subsumed,Build Requirements\n';
-                
-                items.forEach(item => {
-                    const itemState = state[key]?.[item.name];
-                    const isBuilt = itemState?._built === true ? 'Yes' : 'No';
-                    const isMastered = itemState?._mastered === true ? 'Yes' : 'No';
-                    const isSubsumed = itemState?._subsumed === true ? 'Yes' : 'No';
-                    
-                    if (item.expandable) {
-                        csvContent += `"${item.name}","${isBuilt}","${isMastered}","${isSubsumed}","See components below"\n`;
-                        item.components.forEach(comp => {
-                            const compCompleted = state[key]?.[item.name]?.[comp.name];
-                            const materials = comp.materials.replace(/"/g, '""');
-                            csvContent += `"  ${comp.name}","${compCompleted ? 'Yes' : 'No'}","","","${materials}"\n`;
-                        });
-                    } else {
-                        const requirements = (item.requirements || '').replace(/"/g, '""');
-                        const source = (item.source || '').replace(/"/g, '""');
-                        csvContent += `"${item.name}","${isBuilt}","${isMastered}","${isSubsumed}","${requirements} | Source: ${source}"\n`;
-                    }
-                });
-            });
-            
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'Warframe_Checklist_' + new Date().toISOString().split('T')[0] + '.csv';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            setTimeout(() => URL.revokeObjectURL(url), 100);
-            
-            alert('CSV file downloaded successfully!');
-        } catch (error) {
-            console.error('CSV export error:', error);
-            alert('CSV export failed: ' + error.message);
+  try {
+    const rows = [];
+
+    rows.push([
+      'Category',
+      'Item Name',
+      'Row Type',
+      'Built',
+      'Mastered',
+      'Subsumed',
+      'Component Name',
+      'Component Completed',
+      'Notes'
+    ]);
+
+    Object.entries(categories).forEach(([categoryKey, label]) => {
+      const items = data[categoryKey] || [];
+
+      items.forEach(item => {
+        const itemState = state[categoryKey]?.[item.name] || {};
+
+        // ITEM ROW
+        rows.push([
+          label,
+          item.name,
+          'ITEM',
+          itemState._built ? 'Yes' : 'No',
+          itemState._mastered ? 'Yes' : 'No',
+          itemState._subsumed ? 'Yes' : 'No',
+          '',
+          '',
+          item.requirements || ''
+        ]);
+
+        // COMPONENT ROWS
+        if (item.expandable && item.components) {
+          item.components.forEach(comp => {
+            rows.push([
+              label,
+              item.name,
+              'COMPONENT',
+              '',
+              '',
+              '',
+              comp.name,
+              itemState[comp.name] ? 'Yes' : 'No',
+              comp.materials || ''
+            ]);
+          });
         }
-    }
+      });
+    });
+
+    const csvContent = rows
+      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Warframe_Checklist_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+  } catch (err) {
+    console.error('CSV export failed:', err);
+    alert('CSV export failed');
+  }
+}
     
     function importData(event) {
         const file = event.target.files[0];
@@ -1932,52 +1947,38 @@ function applyFlatState(flat) {
                 let currentCategory = null;
                 let currentItem = null;
                 const newState = {};
-                
-                for (let line of lines) {
-                    line = line.trim();
-                    if (!line) continue;
-                    
-                    if (line.startsWith('===')) {
-                        const categoryName = line.replace(/=/g, '').trim();
-                        currentCategory = Object.entries(categories).find(
-                            ([key, label]) => label.toUpperCase() === categoryName
-                        )?.[0];
-                        currentItem = null;
-                        continue;
-                    }
-                    
-                    if (line.includes('Item Name,Built') || line.includes('Resource Name,Type') || 
-                        currentCategory === 'resources' || currentCategory === 'relics') {
-                        continue;
-                    }
-                    
-                    if (!currentCategory) continue;
-                    
-                    const matches = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
-                    if (!matches || matches.length < 2) continue;
-                    
-                    const itemName = matches[0].replace(/^"|"$/g, '').trim();
-                    const isBuilt = matches[1].replace(/^"|"$/g, '').trim().toLowerCase() === 'yes';
-                    const isMastered = matches[2] ? matches[2].replace(/^"|"$/g, '').trim().toLowerCase() === 'yes' : false;
-                    const isSubsumed = matches[3] ? matches[3].replace(/^"|"$/g, '').trim().toLowerCase() === 'yes' : false;
-                    
-                    if (itemName.startsWith('  ')) {
-                        const componentName = itemName.trim();
-                        if (currentItem && newState[currentCategory]?.[currentItem]) {
-                            newState[currentCategory][currentItem][componentName] = isBuilt;
-                        }
-                    } else {
-                        currentItem = itemName;
-                        if (!newState[currentCategory]) {
-                            newState[currentCategory] = {};
-                        }
-                        newState[currentCategory][itemName] = {
-                            _built: isBuilt,
-                            _mastered: isMastered,
-                            _subsumed: isSubsumed
-                        };
-                    }
-                }
+
+for (let i = 1; i < lines.length; i++) {
+  const cols = lines[i].match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
+  if (!cols || cols.length < 3) continue;
+
+  const categoryLabel = cols[0].replace(/"/g, '');
+  const itemName = cols[1].replace(/"/g, '');
+  const rowType = cols[2].replace(/"/g, '');
+
+  const categoryKey = Object.entries(categories).find(
+    ([_, label]) => label === categoryLabel
+  )?.[0];
+
+  if (!categoryKey) continue;
+
+  if (!newState[categoryKey]) newState[categoryKey] = {};
+  if (!newState[categoryKey][itemName]) newState[categoryKey][itemName] = {};
+
+  if (rowType === 'ITEM') {
+    newState[categoryKey][itemName]._built = cols[3]?.includes('Yes');
+    newState[categoryKey][itemName]._mastered = cols[4]?.includes('Yes');
+    newState[categoryKey][itemName]._subsumed = cols[5]?.includes('Yes');
+  }
+
+  if (rowType === 'COMPONENT') {
+    const compName = cols[6]?.replace(/"/g, '');
+    const completed = cols[7]?.includes('Yes');
+    if (compName) {
+      newState[categoryKey][itemName][compName] = completed;
+    }
+  }
+}
                 
                 Object.keys(newState).forEach(category => {
                     if (!state[category]) state[category] = {};
