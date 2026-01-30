@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Warframe Interactive Checklist</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -296,10 +295,9 @@ Support
 ```
 <div class="controls">
     <input type="text" class="search-box" id="searchBox" placeholder="Search items...">
-    <button class="btn" onclick="exportToExcel()">📥 Export Excel</button>
     <button class="btn btn-secondary" onclick="exportToCSV()">📄 Export CSV</button>
     <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📤 Import</button>
-    <input type="file" id="importFile" accept=".csv,.xlsx" style="display: none;" onchange="importData(event)">
+    <input type="file" id="importFile" accept=".csv" style="display: none;" onchange="importData(event)">
 </div>
 
 <div class="tabs" id="tabs"></div>
@@ -1885,10 +1883,8 @@ const sorted = filtered.sort((a, b) => a.name.localeCompare(b.name));
         
         if (fileExtension === 'csv') {
             importCSV(file);
-        } else if (fileExtension === 'xlsx') {
-            importExcel(file);
         } else {
-            alert('Please select a CSV or Excel file');
+            alert('Please select a CSV file');
         }
         
         event.target.value = '';
@@ -1964,58 +1960,7 @@ const sorted = filtered.sort((a, b) => a.name.localeCompare(b.name));
             }
         };
         reader.readAsText(file);
-    }
-    
-    function importExcel(file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const newState = {};
-                
-                workbook.SheetNames.forEach(sheetName => {
-                    const categoryKey = Object.entries(categories).find(
-                        ([key, label]) => label === sheetName
-                    )?.[0];
-                    
-                    if (!categoryKey || categoryKey === 'resources' || categoryKey === 'relics') return;
-                    
-                    const worksheet = workbook.Sheets[sheetName];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                    
-                    let currentItem = null;
-                    
-                    for (let i = 1; i < jsonData.length; i++) {
-                        const row = jsonData[i];
-                        if (!row || row.length < 2) continue;
-                        
-                        const itemName = row[0];
-                        const isBuilt = row[1] === '✓' || row[1] === 'Yes';
-                        const isMastered = row[2] === '✓' || row[2] === 'Yes';
-                        const isSubsumed = row[3] === '✓' || row[3] === 'Yes';
-                        
-                        if (typeof itemName !== 'string') continue;
-                        
-                        if (itemName.startsWith('  ')) {
-                            const componentName = itemName.trim();
-                            if (currentItem && newState[categoryKey]?.[currentItem]) {
-                                newState[categoryKey][currentItem][componentName] = isBuilt;
-                            }
-                        } else {
-                            currentItem = itemName;
-                            if (!newState[categoryKey]) {
-                                newState[categoryKey] = {};
-                            }
-                            newState[categoryKey][itemName] = {
-                                _built: isBuilt,
-                                _mastered: isMastered,
-                                _subsumed: isSubsumed
-                            };
-                        }
-                    }
-                });
-                
+    }           
                 Object.keys(newState).forEach(category => {
                     if (!state[category]) state[category] = {};
                     Object.assign(state[category], newState[category]);
@@ -2030,25 +1975,7 @@ const sorted = filtered.sort((a, b) => a.name.localeCompare(b.name));
             }
         };
         reader.readAsArrayBuffer(file);
-    }
-    
-    function exportToExcel() {
-        try {
-            const wb = XLSX.utils.book_new();
-            
-            Object.entries(categories).forEach(([key, label]) => {
-                if (key === 'resources' || key === 'relics') {
-                    const resources = data[key] || [];
-                    const rows = [['Resource Name', 'Type', 'Location']];
-                    resources.forEach(r => {
-                        rows.push([r.name, r.type, r.location]);
-                    });
-                    const ws = XLSX.utils.aoa_to_sheet(rows);
-                    ws['!cols'] = [{ wch: 25 }, { wch: 20 }, { wch: 60 }];
-                    XLSX.utils.book_append_sheet(wb, ws, label);
-                    return;
-                }
-                
+    }                
                 const items = data[key] || [];
                 if (items.length === 0) return;
                 
@@ -2069,14 +1996,8 @@ const sorted = filtered.sort((a, b) => a.name.localeCompare(b.name));
                     } else {
                         rows.push([item.name, isBuilt, isMastered, isSubsumed, item.requirements || '']);
                     }
-                });
-                
-                const ws = XLSX.utils.aoa_to_sheet(rows);
-                ws['!cols'] = [{ wch: 25 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 60 }];
-                XLSX.utils.book_append_sheet(wb, ws, label);
             });
             
-            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
             const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
