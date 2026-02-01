@@ -1199,7 +1199,16 @@ Support
   ]
 },
             { name: 'Grattler', requirements: 'Archgun parts', source: 'Archwing missions' },
-            { name: 'Lato Vandal', requirements: 'Barrel, Receiver, Blueprint', source: 'Elite Sanctuary Onslaught rewards' }, // used for mastery parity
+{
+  name: 'Lato Vandal',
+  expandable: true,
+  source: 'Elite Sanctuary Onslaught rewards',
+  components: [
+    { name: 'Barrel', materials: '' },
+    { name: 'Receiver', materials: '' },
+    { name: 'Blueprint', materials: '' }
+  ]
+},
             { name: 'Mausolon', requirements: 'Auto-built', source: 'Necramech (Voidrig)' },
             { name: 'Phaedra', requirements: 'Archgun parts', source: 'Archwing missions' },
             { name: 'Quellor', requirements: 'Fieldron (10), Hexenon (1200), Argon Crystal (3)', source: 'Market' },
