@@ -1723,17 +1723,30 @@ Support
         renderWithoutCollapse();
     }
     
-    function toggleComponent(category, itemName, componentName) {
-        if (!state[category]) state[category] = {};
-        if (!state[category][itemName]) state[category][itemName] = { _built: false };
-        if (typeof state[category][itemName] !== 'object') {
-            state[category][itemName] = { _built: false };
-        }
-        const compState = state[category][itemName][componentName];
-        state[category][itemName][componentName] = !compState;
-        saveState();
-        renderWithoutCollapse();
+function toggleComponent(category, itemName, componentName) {
+    if (!state[category]) state[category] = {};
+    if (!state[category][itemName] || typeof state[category][itemName] !== 'object') {
+        state[category][itemName] = { _built: false };
     }
+
+    // Toggle component
+    state[category][itemName][componentName] =
+        !state[category][itemName][componentName];
+
+    // Auto-set Built when all components are checked
+    const itemData = data[category]?.find(i => i.name === itemName);
+    if (itemData?.expandable && Array.isArray(itemData.components)) {
+        const allChecked = itemData.components.every(comp =>
+            state[category][itemName][comp.name] === true
+        );
+
+        state[category][itemName]._built = allChecked;
+    }
+
+    saveState();
+    renderWithoutCollapse();
+}
+
     
     function toggleExpand(itemName) {
         const el = document.getElementById(`details-${itemName}`);
