@@ -1091,11 +1091,43 @@ Support
             { name: 'Vulkar', requirements: 'Morphics (3), Plastids (900), Polymer Bundle (1200)', source: 'Market' },
             { name: 'Zarr', requirements: 'Detonite Injector (5), Oxium (300), Argon Crystal (2)', source: 'Chem Lab (Dojo)' },
             { name: 'Zhuge', requirements: 'Fieldron (5), Plastids (900), Polymer Bundle (1200)', source: 'Market' },
-            { name: 'Dera Vandal', requirements: 'Barrel, Receiver, Stock', source: 'Invasion rewards' },
-            { name: 'Gorgon Wraith', requirements: 'Barrel, Receiver, Stock', source: 'Baro Ki\'Teer or Invasion rewards' },
+            { name: 'Dera Vandal',
+              expandable: true,
+              source: 'Invasion rewards',
+              components: [
+                { name: 'Barrel', materials: '' },
+                { name: 'Receiver', materials: '' },
+                { name: 'Stock', materials: '' }
+              ]
+            },
+            { name: 'Gorgon Wraith', expandable: true, source: 'Baro Ki\'Teer or Invasion rewards',
+             components: [
+                { name: 'Barrel', materials: '' },
+                { name: 'Receiver', materials: '' },
+                { name: 'Stock', materials: '' }
+                  ]
+            },
             { name: 'Ignis Wraith', requirements: 'Blueprint from Clan Research or Baro Ki\'Teer', source: 'Dojo (Solar Rail conflict) or Baro Ki\'Teer' },
-            { name: 'Karak Wraith', requirements: 'Barrel, Receiver, Stock', source: 'Invasion rewards' },
-            { name: 'Latron Wraith', requirements: 'Barrel, Receiver, Stock', source: 'Invasion rewards or Void Trader' },
+{
+  name: 'Karak Wraith',
+  expandable: true,
+  source: 'Invasion rewards',
+  components: [
+    { name: 'Barrel', materials: '' },
+    { name: 'Receiver', materials: '' },
+    { name: 'Stock', materials: '' }
+  ]
+},
+{
+  name: 'Latron Wraith',
+  expandable: true,
+  source: 'Invasion rewards or Void Trader',
+  components: [
+    { name: 'Barrel', materials: '' },
+    { name: 'Receiver', materials: '' },
+    { name: 'Stock', materials: '' }
+  ]
+},
             { name: 'MK1-Braton', requirements: 'Alloy Plate (300), Ferrite (150), Salvage (100)', source: 'Market (low mastery starter)' },
             { name: 'MK1-Paris', requirements: 'Morphics (1), Plastids (300), Polymer Bundle (450)', source: 'Market (low mastery starter)' },
             { name: 'MK1-Strun', requirements: 'Alloy Plate (300), Ferrite (150), Salvage (100)', source: 'Market (low mastery starter)' },
@@ -1105,9 +1137,36 @@ Support
             { name: 'Prisma Tetra', requirements: 'Ducats (400), Credits (175000)', source: 'Baro Ki\'Teer' },
             { name: 'Rakta Cernos', requirements: 'Red Veil standing (125000)', source: 'Syndicate: Red Veil' },
             { name: 'Sancti Tigris', requirements: 'New Loka standing (125000)', source: 'Syndicate: New Loka' },
-            { name: 'Snipetron Vandal', requirements: 'Barrel, Receiver, Stock', source: 'Invasion rewards (rare)' },
-            { name: 'Strun Wraith', requirements: 'Barrel, Receiver, Stock', source: 'Invasion rewards' },
-            { name: 'Supra Vandal', requirements: 'Barrel, Receiver, Stock', source: 'Invasion rewards' },
+{
+  name: 'Snipetron Vandal',
+  expandable: true,
+  source: 'Invasion rewards (rare)',
+  components: [
+    { name: 'Barrel', materials: '' },
+    { name: 'Receiver', materials: '' },
+    { name: 'Stock', materials: '' }
+  ]
+},
+{
+  name: 'Strun Wraith',
+  expandable: true,
+  source: 'Invasion rewards',
+  components: [
+    { name: 'Barrel', materials: '' },
+    { name: 'Receiver', materials: '' },
+    { name: 'Stock', materials: '' }
+  ]
+},
+{
+  name: 'Supra Vandal',
+  expandable: true,
+  source: 'Invasion rewards',
+  components: [
+    { name: 'Barrel', materials: '' },
+    { name: 'Receiver', materials: '' },
+    { name: 'Stock', materials: '' }
+  ]
+},
             { name: 'Vaykor Hek', requirements: 'Steel Meridian standing (125000)', source: 'Syndicate: Steel Meridian' },
             { name: 'Braton Vandal',
   expandable: true,
@@ -1118,18 +1177,63 @@ Support
     { name: 'Stock', materials: '' }
   ]
 },
-            { name: 'Burston Vandal', requirements: 'Barrel, Receiver, Stock', source: 'Invasion rewards' },
+{
+  name: 'Burston Vandal',
+  expandable: true,
+  source: 'Invasion rewards',
+  components: [
+    { name: 'Barrel', materials: '' },
+    { name: 'Receiver', materials: '' },
+    { name: 'Stock', materials: '' }
+  ]
+},
             { name: 'Corvas', requirements: 'Archgun parts', source: 'Gravimag / Archgun (Atmospheric)' },
-            { name: 'Dread Wraith', requirements: 'Barrel, Receiver, Stock', source: 'Invasion rewards (rare)' },
+{
+  name: 'Dread Wraith',
+  expandable: true,
+  source: 'Invasion rewards (rare)',
+  components: [
+    { name: 'Barrel', materials: '' },
+    { name: 'Receiver', materials: '' },
+    { name: 'Stock', materials: '' }
+  ]
+},
             { name: 'Grattler', requirements: 'Archgun parts', source: 'Archwing missions' },
             { name: 'Lato Vandal', requirements: 'Barrel, Receiver, Blueprint', source: 'Elite Sanctuary Onslaught rewards' }, // used for mastery parity
             { name: 'Mausolon', requirements: 'Auto-built', source: 'Necramech (Voidrig)' },
             { name: 'Phaedra', requirements: 'Archgun parts', source: 'Archwing missions' },
             { name: 'Quellor', requirements: 'Fieldron (10), Hexenon (1200), Argon Crystal (3)', source: 'Market' },
             { name: 'Shedu', requirements: 'Shedu parts', source: 'Sentient Anomaly (Veil Proxima)' },
-            { name: 'Spectra Vandal', requirements: 'Barrel, Receiver, Blueprint', source: 'Invasion rewards' },
-            { name: 'Stahlta Vandal', requirements: 'Barrel, Receiver, Stock', source: 'Invasion rewards (rare)' },
-            { name: 'Vectis Wraith', requirements: 'Barrel, Receiver, Stock', source: 'Invasion rewards / Baro Ki\'Teer' },
+{
+  name: 'Spectra Vandal',
+  expandable: true,
+  source: 'Invasion rewards',
+  components: [
+    { name: 'Barrel', materials: '' },
+    { name: 'Receiver', materials: '' },
+    { name: 'Blueprint', materials: '' }
+  ]
+},
+{
+  name: 'Stahlta Vandal',
+  expandable: true,
+  source: 'Invasion rewards (rare)',
+  components: [
+    { name: 'Barrel', materials: '' },
+    { name: 'Receiver', materials: '' },
+    { name: 'Stock', materials: '' }
+  ]
+},
+{
+  name: 'Vectis Wraith',
+  expandable: true,
+  source: 'Invasion rewards / Baro Ki\'Teer',
+  components: [
+    { name: 'Barrel', materials: '' },
+    { name: 'Receiver', materials: '' },
+    { name: 'Stock', materials: '' }
+  ]
+},
             { name: 'Zenith', requirements: 'Login reward', source: 'Daily Tribute (100+ days)' },
         ],
         secondary: [
