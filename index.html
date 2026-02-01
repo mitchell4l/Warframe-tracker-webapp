@@ -1109,7 +1109,15 @@ Support
             { name: 'Strun Wraith', requirements: 'Barrel, Receiver, Stock', source: 'Invasion rewards' },
             { name: 'Supra Vandal', requirements: 'Barrel, Receiver, Stock', source: 'Invasion rewards' },
             { name: 'Vaykor Hek', requirements: 'Steel Meridian standing (125000)', source: 'Syndicate: Steel Meridian' },
-            { name: 'Braton Vandal', requirements: 'Barrel, Receiver, Stock', source: 'Elite Sanctuary Onslaught rewards' },
+            { name: 'Braton Vandal',
+  expandable: true,
+  source: 'Elite Sanctuary Onslaught rewards',
+  components: [
+    { name: 'Barrel', materials: '' },
+    { name: 'Receiver', materials: '' },
+    { name: 'Stock', materials: '' }
+  ]
+},
             { name: 'Burston Vandal', requirements: 'Barrel, Receiver, Stock', source: 'Invasion rewards' },
             { name: 'Corvas', requirements: 'Archgun parts', source: 'Gravimag / Archgun (Atmospheric)' },
             { name: 'Dread Wraith', requirements: 'Barrel, Receiver, Stock', source: 'Invasion rewards (rare)' },
