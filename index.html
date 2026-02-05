@@ -5,6 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Warframe Interactive Checklist</title>
+
+<button onclick="login()">Login</button>
+<button onclick="logout()">Logout</button>
+<span id="userStatus">Not logged in</span>
+
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -254,6 +259,7 @@ class="donate-btn">
 Support
 </a>
 
+
 <style>
 .donate-btn {
   display: inline-flex;
@@ -314,7 +320,22 @@ Support
 
 <div class="item-list" id="itemList"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
 <script>
+    const firebaseConfig = {
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT",
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
     const STATE_VERSION = 1;
 
     let currentTab = 'warframes';
@@ -1685,6 +1706,16 @@ Support
         ]
     };
     
+    function login() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider);
+}
+
+    function logout() {
+  auth.signOut();
+}
+
+
     function initTabs() {
         const tabsEl = document.getElementById('tabs');
         tabsEl.innerHTML = Object.entries(categories).map(([key, label]) => 
@@ -1942,12 +1973,21 @@ const sorted = filtered.sort((a, b) => a.name.localeCompare(b.name));
         document.getElementById('progressFill').style.width = percent + '%';
     }
     
-    function saveState() {
-  localStorage.setItem(
-    'warframeState',
-    JSON.stringify({ version: STATE_VERSION, data: state })
-  );
+function saveState() {
+  try {
+    localStorage.setItem('warframeState', JSON.stringify(state));
+
+    const user = auth.currentUser;
+    if (user) {
+      db.collection('users')
+        .doc(user.uid)
+        .set({ state }, { merge: true });
     }
+  } catch (e) {
+    console.error('Failed to save state:', e);
+  }
+}
+
     
     function loadState() {
   const saved = localStorage.getItem('warframeState');
@@ -2167,6 +2207,24 @@ for (let i = 1; i < lines.length; i++) {
     loadState();
     initTabs();
     render();
+
+auth.onAuthStateChanged(async user => {
+  if (user) {
+    document.getElementById('userStatus').textContent =
+      `Logged in as ${user.displayName || user.email}`;
+
+    const doc = await db.collection('users').doc(user.uid).get();
+    if (doc.exists) {
+      state = doc.data().state || {};
+      saveState();
+      render();
+    }
+  } else {
+    document.getElementById('userStatus').textContent = 'Not logged in';
+  }
+});
+
+
 </script>
 ```
 
