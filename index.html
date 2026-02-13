@@ -6,10 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Warframe Interactive Checklist</title>
 
-<button onclick="login()">Login</button>
-<button onclick="logout()">Logout</button>
-<span id="userStatus">Not logged in</span>
-
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -246,6 +242,23 @@
             color: #10b981;
         }
         .no-results { text-align: center; padding: 40px; color: #64748b; }
+
+.auth-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.auth-status {
+  font-size: 13px;
+  color: #94a3b8;
+  padding: 6px 10px;
+  background: rgba(51, 65, 85, 0.5);
+  border-radius: 6px;
+}
+
+    
     </style>
     <!-- Donate Button -->
 
@@ -301,9 +314,17 @@ Support
 ```
 <div class="controls">
     <input type="text" class="search-box" id="searchBox" placeholder="Search items...">
+
     <button class="btn btn-secondary" onclick="exportToCSV()">📄 Export CSV</button>
     <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📤 Import</button>
     <input type="file" id="importFile" accept=".csv" style="display: none;" onchange="importData(event)">
+
+    <!-- Auth Section -->
+    <div class="auth-group">
+        <button id="loginBtn" class="btn btn-secondary" onclick="login()">🔐 Login</button>
+        <button id="logoutBtn" class="btn btn-secondary" onclick="logout()">🚪 Logout</button>
+        <span class="auth-status" id="userStatus">Not logged in</span>
+    </div>
 </div>
 
 <div class="tabs" id="tabs"></div>
@@ -2213,20 +2234,37 @@ for (let i = 1; i < lines.length; i++) {
     render();
 
 auth.onAuthStateChanged(async user => {
+  const loginBtn = document.getElementById('loginBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const userStatus = document.getElementById('userStatus');
+
   if (user) {
-    document.getElementById('userStatus').textContent =
+    // Update status text
+    userStatus.textContent =
       `Logged in as ${user.displayName || user.email}`;
 
+    // Show/hide buttons
+    loginBtn.style.display = 'none';
+    logoutBtn.style.display = 'inline-block';
+
+    // Load cloud state
     const doc = await db.collection('users').doc(user.uid).get();
     if (doc.exists) {
       state = doc.data().state || {};
       saveState();
       render();
     }
+
   } else {
-    document.getElementById('userStatus').textContent = 'Not logged in';
+    // Update status text
+    userStatus.textContent = 'Not logged in';
+
+    // Show/hide buttons
+    loginBtn.style.display = 'inline-block';
+    logoutBtn.style.display = 'none';
   }
 });
+
 
 
 </script>
