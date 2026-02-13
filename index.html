@@ -243,6 +243,21 @@
         }
         .no-results { text-align: center; padding: 40px; color: #64748b; }
 
+.top-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(15, 23, 42, 0.85);
+    border-bottom: 1px solid rgba(71, 85, 105, 0.4);
+}
+
+.left-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .auth-group {
   display: flex;
   align-items: center;
@@ -306,6 +321,22 @@ Support
 </style>
 </head>
 <body>
+
+<div class="top-actions">
+    <div class="left-actions">
+        <button id="loginBtn" class="btn btn-secondary" onclick="login()">🔐 Login</button>
+        <button id="logoutBtn" class="btn btn-secondary" onclick="logout()">🚪 Logout</button>
+        <span class="auth-status" id="userStatus">Not logged in</span>
+    </div>
+
+    <a href="https://cash.app/$MitchellDuke93"
+       target="_blank"
+       rel="noopener noreferrer"
+       class="donate-btn">
+        ❤️ Support
+    </a>
+</div>
+
     <div class="header">
         <h1>🎮 Warframe Arsenal Tracker</h1>
         <p class="subtitle">Track every frame, weapon, and companion</p>
@@ -319,12 +350,6 @@ Support
     <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📤 Import</button>
     <input type="file" id="importFile" accept=".csv" style="display: none;" onchange="importData(event)">
 
-    <!-- Auth Section -->
-    <div class="auth-group">
-        <button id="loginBtn" class="btn btn-secondary" onclick="login()">🔐 Login</button>
-        <button id="logoutBtn" class="btn btn-secondary" onclick="logout()">🚪 Logout</button>
-        <span class="auth-status" id="userStatus">Not logged in</span>
-    </div>
 </div>
 
 <div class="tabs" id="tabs"></div>
