@@ -313,6 +313,7 @@
         <button id="loginBtn" class="btn btn-secondary" onclick="login()">🔐 Login</button>
         <button id="logoutBtn" class="btn btn-secondary" onclick="logout()">🚪 Logout</button>
         <span class="auth-status" id="userStatus">Not logged in</span>
+        <span class="sync-status idle" id="syncStatus">Not synced</span>
     </div>
 
     <a href="https://cash.app/$MitchellDuke93"
@@ -2250,29 +2251,42 @@ auth.onAuthStateChanged(async user => {
   const userStatus = document.getElementById('userStatus');
 
   if (user) {
-    // Update status text
-    userStatus.textContent =
-      `Logged in as ${user.displayName || user.email}`;
-
-    // Show/hide buttons
+    userStatus.textContent = `Logged in as ${user.displayName || user.email}`;
     loginBtn.style.display = 'none';
     logoutBtn.style.display = 'inline-block';
 
-    // Load cloud state
+    setSyncPill('idle', 'Syncing…');
+
     const doc = await db.collection('users').doc(user.uid).get();
     if (doc.exists) {
-      state = doc.data().state || {};
+      const cloud = doc.data() || {};
+      state = cloud.state || {};
+
+      if (cloud.lastUpdated && cloud.lastUpdated.toDate) {
+        lastSyncedAt = cloud.lastUpdated.toDate();
+      } else {
+        lastSyncedAt = null;
+      }
+
+      // keep local backup in sync (this also triggers a cloud save; okay for now)
       saveState();
+      render();
+    } else {
+      lastSyncedAt = null;
+      updateSyncPill();
       render();
     }
 
-  } else {
-    // Update status text
-    userStatus.textContent = 'Not logged in';
+    startSyncTimer();
+    updateSyncPill();
 
-    // Show/hide buttons
+  } else {
+    userStatus.textContent = 'Not logged in';
     loginBtn.style.display = 'inline-block';
     logoutBtn.style.display = 'none';
+
+    lastSyncedAt = null;
+    updateSyncPill();
   }
 });
 
