@@ -2257,29 +2257,56 @@ auth.onAuthStateChanged(async user => {
 
     setSyncPill('idle', 'Syncing…');
 
-    const doc = await db.collection('users').doc(user.uid).get();
-    if (doc.exists) {
-      const cloud = doc.data() || {};
-      state = cloud.state || {};
+    try {
+      const docRef = db.collection('users').doc(user.uid);
+      const doc = await docRef.get();
 
-      if (cloud.lastUpdated && cloud.lastUpdated.toDate) {
-        lastSyncedAt = cloud.lastUpdated.toDate();
+      if (doc.exists) {
+        const cloud = doc.data() || {};
+        const cloudState = cloud.state;
+
+        // Only overwrite local if cloud has real data
+        if (cloudState && typeof cloudState === 'object' && Object.keys(cloudState).length > 0) {
+          state = cloudState;
+          // keep localStorage aligned with cloud (LOCAL ONLY here)
+          try {
+            localStorage.setItem('warframeState', JSON.stringify(state));
+          } catch (e) {
+            console.error('Failed to save local state:', e);
+          }
+        } else {
+          // Cloud empty -> push local up
+          await docRef.set({
+            state,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        }
+
+        // lastUpdated -> sync pill baseline
+        if (cloud.lastUpdated && cloud.lastUpdated.toDate) {
+          lastSyncedAt = cloud.lastUpdated.toDate();
+        } else {
+          lastSyncedAt = new Date();
+        }
       } else {
-        lastSyncedAt = null;
+        // No doc -> create from local
+        await docRef.set({
+          state,
+          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        lastSyncedAt = new Date();
       }
 
-      // keep local backup in sync (this also triggers a cloud save; okay for now)
-      saveState();
       render();
-    } else {
-      lastSyncedAt = null;
       updateSyncPill();
+      startSyncTimer();
+    } catch (e) {
+      console.error('Cloud load failed:', e);
+      setSyncPill('offline', 'Sync failed');
+      // Still render whatever local state we have
       render();
     }
-
-    startSyncTimer();
-    updateSyncPill();
-
   } else {
     userStatus.textContent = 'Not logged in';
     loginBtn.style.display = 'inline-block';
@@ -2287,6 +2314,10 @@ auth.onAuthStateChanged(async user => {
 
     lastSyncedAt = null;
     updateSyncPill();
+
+    // Show local state when logged out
+    loadState();
+    render();
   }
 });
 
