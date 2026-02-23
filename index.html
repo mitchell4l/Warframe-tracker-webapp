@@ -378,6 +378,11 @@
     let currentTab = 'warframes';
     let searchTerm = '';
     let state = {};
+
+    let cloudReady = false;     // blocks cloud writes until initial cloud load finishes
+    let cloudWriteTimer = null; // debounces Firestore saves
+    let lastSyncedAt = null;    // used by the "Last synced" pill
+    let syncTimer = null;       // refreshes the pill text every few seconds
     
     const categories = {
         warframes: 'Warframes',
@@ -2250,70 +2255,91 @@ auth.onAuthStateChanged(async user => {
   const logoutBtn = document.getElementById('logoutBtn');
   const userStatus = document.getElementById('userStatus');
 
+  // Block cloud writes until we finish deciding what state to use
+  cloudReady = false;
+
   if (user) {
     userStatus.textContent = `Logged in as ${user.displayName || user.email}`;
     loginBtn.style.display = 'none';
     logoutBtn.style.display = 'inline-block';
 
-    setSyncPill('idle', 'Syncing…');
+    setSyncPill?.('idle', 'Syncing…');
 
     try {
       const docRef = db.collection('users').doc(user.uid);
       const doc = await docRef.get();
 
+      const localHasData =
+        state && typeof state === 'object' && Object.keys(state).length > 0;
+
       if (doc.exists) {
         const cloud = doc.data() || {};
         const cloudState = cloud.state;
+        const cloudHasData =
+          cloudState && typeof cloudState === 'object' && Object.keys(cloudState).length > 0;
 
-        // Only overwrite local if cloud has real data
-        if (cloudState && typeof cloudState === 'object' && Object.keys(cloudState).length > 0) {
+        // ✅ Prefer cloud if it has data
+        if (cloudHasData) {
           state = cloudState;
-          // keep localStorage aligned with cloud (LOCAL ONLY here)
+
+          // keep localStorage aligned to cloud
           try {
             localStorage.setItem('warframeState', JSON.stringify(state));
-          } catch (e) {
-            console.error('Failed to save local state:', e);
+          } catch (e) {}
+
+          if (cloud.lastUpdated && cloud.lastUpdated.toDate) {
+            lastSyncedAt = cloud.lastUpdated.toDate();
+          } else {
+            lastSyncedAt = new Date();
           }
         } else {
-          // Cloud empty -> push local up
+          // Cloud exists but is empty
+          if (localHasData) {
+            // ✅ push local up once
+            await docRef.set({
+              state,
+              lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+            lastSyncedAt = new Date();
+          } else {
+            // Both empty -> fine
+            lastSyncedAt = null;
+          }
+        }
+      } else {
+        // No doc yet
+        if (localHasData) {
           await docRef.set({
             state,
             lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
           }, { merge: true });
-        }
-
-        // lastUpdated -> sync pill baseline
-        if (cloud.lastUpdated && cloud.lastUpdated.toDate) {
-          lastSyncedAt = cloud.lastUpdated.toDate();
-        } else {
           lastSyncedAt = new Date();
+        } else {
+          lastSyncedAt = null;
         }
-      } else {
-        // No doc -> create from local
-        await docRef.set({
-          state,
-          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-
-        lastSyncedAt = new Date();
       }
 
+      // ✅ Now it’s safe to allow cloud writes
+      cloudReady = true;
+
       render();
-      updateSyncPill();
-      startSyncTimer();
+      updateSyncPill?.();
+      startSyncTimer?.();
+
     } catch (e) {
       console.error('Cloud load failed:', e);
-      setSyncPill('offline', 'Sync failed');
-      // Still render whatever local state we have
+      setSyncPill?.('offline', 'Sync failed');
+      cloudReady = true; // allow local saves at least
       render();
     }
+
   } else {
     userStatus.textContent = 'Not logged in';
     loginBtn.style.display = 'inline-block';
     logoutBtn.style.display = 'none';
 
     lastSyncedAt = null;
-    updateSyncPill();
+    updateSyncPill?.();
 
     // Show local state when logged out
     loadState();
